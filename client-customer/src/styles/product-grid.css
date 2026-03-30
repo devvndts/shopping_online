@@ -1,0 +1,79 @@
+div.inline {
+  display: inline-block;
+  vertical-align: top;
+  margin: 10px;
+}
+
+div.inline figure {
+  margin: 0;
+  background: var(--cc-white);
+  border-radius: var(--cc-radius-card);
+  box-shadow: var(--cc-shadow-card);
+  overflow: hidden;
+  border: 1px solid var(--cc-gray-200);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  max-width: 300px;
+}
+
+div.inline figure:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.14);
+}
+
+div.inline figure a {
+  display: block;
+  background: var(--cc-gray-50);
+}
+
+div.inline figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 300px;
+  object-fit: contain;
+}
+
+div.inline figure figcaption {
+  padding: 14px 16px 18px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cc-black);
+  line-height: 1.45;
+}
+
+div.inline figure figcaption br + *,
+div.inline figure figcaption {
+  font-weight: 500;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.align-center {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cc-home .cc-home__section--new,
+.cc-home .cc-home__section--category {
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+}
+
+.body-customer .text-center {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.body-customer .text-center h2.text-center {
+  margin: 28px 0 16px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

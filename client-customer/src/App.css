@@ -1,0 +1,27 @@
+@import "./styles/customer.css";
+
+:root {
+  --toastify-font-family: "DM Sans", system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+.Toastify__toast {
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
+.Toastify__progress-bar {
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+}
+
+.Toastify__toast--success .Toastify__progress-bar {
+  background: linear-gradient(90deg, #16a34a, #15803d);
+}
+
+.Toastify__toast--error .Toastify__progress-bar {
+  background: linear-gradient(90deg, #dc2626, #b91c1c);
+}
+
+.Toastify__toast--warning .Toastify__progress-bar {
+  background: linear-gradient(90deg, #ca8a04, #a16207);
+}

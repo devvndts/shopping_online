@@ -1,0 +1,55 @@
+.datatable {
+  text-align: center;
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 100%;
+  background: var(--cc-white);
+  border-radius: var(--cc-radius-card);
+  overflow: hidden;
+  box-shadow: var(--cc-shadow-sm);
+  border: 1px solid var(--cc-gray-200);
+}
+
+.body-customer table.datatable {
+  border: 1px solid var(--cc-gray-200);
+}
+
+.datatable th,
+.datatable td {
+  padding: 12px 10px;
+  font-size: 0.875rem;
+}
+
+.datatable tr:first-child th {
+  background: linear-gradient(180deg, var(--cc-yellow) 0%, #e6b800 100%);
+  color: var(--cc-black);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+}
+
+.datatable tr:not(:first-child):nth-child(even) {
+  background-color: var(--cc-gray-50);
+}
+
+.datatable tr:not(:first-child):nth-child(odd) {
+  background-color: var(--cc-white);
+}
+
+.datatable tr:not(:first-child):hover {
+  background-color: #e8f4fc;
+  cursor: pointer;
+}
+
+span.link {
+  cursor: pointer;
+  color: var(--cc-blue-dark);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+span.link:hover {
+  color: var(--cc-red);
+}

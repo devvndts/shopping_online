@@ -1,0 +1,111 @@
+@import "./styles/admin-dashboard.css";
+
+/* styles.css */
+.body-customer {
+  width: 1150px;
+  height: fit-content;
+  margin: 0 auto;
+}
+
+.body-admin {
+  width: fit-content;
+  height: fit-content;
+  margin: 0 auto;
+}
+
+div.inline {
+  display: inline-block;
+}
+
+figure.caption-right {
+  display: flex;
+  align-items: center;
+}
+
+.align-center {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.align-valign-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0 20px 20px 20px;
+  border: 1px solid black;
+}
+
+.text-center {
+  text-align: center;
+}
+
+span.link {
+  cursor: pointer;
+  color: blue;
+  text-decoration: underline;
+}
+
+/* menu.css */
+div.border-bottom {
+  border-bottom: 1px solid black;
+  padding: 10px 0;
+}
+
+div.float-left {
+  float: left;
+}
+
+div.float-right {
+  float: right;
+}
+
+div.float-clear {
+  clear: both;
+}
+
+ul.menu {
+  margin: 0;
+  padding: 0;
+}
+
+li.menu {
+  display: inline;
+  margin-right: 20px;
+  text-transform: uppercase;
+}
+
+form.search {
+  margin: 0;
+}
+
+input.keyword {
+  width: 110px;
+}
+
+/* datatable.css */
+.datatable {
+  text-align: center;
+  border-collapse: collapse;
+}
+
+/* header */
+.datatable tr:first-child {
+  background-color: #ffcc00;
+}
+
+/* even rows, except header */
+.datatable tr:not(:first-child):nth-child(even) {
+  background-color: #f5f5f5;
+}
+
+/* odd rows, except header */
+.datatable tr:not(:first-child):nth-child(odd) {
+  background-color: #ffeeaa;
+}
+
+/* hover rows, except header */
+.datatable tr:not(:first-child):hover {
+  background-color: #dcfcfc;
+  cursor: pointer;
+}

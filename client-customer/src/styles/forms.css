@@ -1,0 +1,80 @@
+.body-customer .align-center form {
+  width: 100%;
+}
+
+.body-customer .align-center form table.align-center {
+  background: var(--cc-white);
+  border-radius: var(--cc-radius-card);
+  box-shadow: var(--cc-shadow-card);
+  border: 1px solid var(--cc-gray-200);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  min-width: 320px;
+}
+
+.body-customer .align-center form table.align-center td {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--cc-gray-100);
+  font-size: 0.9375rem;
+}
+
+.body-customer .align-center form table.align-center tr:last-child td {
+  border-bottom: none;
+  padding-top: 18px;
+  padding-bottom: 20px;
+}
+
+.body-customer .align-center form table.align-center td:first-child {
+  font-weight: 600;
+  color: var(--cc-gray-600);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.body-customer .align-center form input[type="text"],
+.body-customer .align-center form input[type="password"],
+.body-customer .align-center form input[type="tel"],
+.body-customer .align-center form input[type="email"],
+.body-customer .align-center form input[type="number"] {
+  width: 100%;
+  max-width: 280px;
+  padding: 10px 14px;
+  border: 1px solid var(--cc-gray-200);
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.body-customer .align-center form input:focus {
+  outline: none;
+  border-color: var(--cc-black);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+.body-customer .align-center form input[type="submit"] {
+  background: var(--cc-black);
+  color: var(--cc-white);
+  border: none;
+  padding: 12px 28px;
+  border-radius: var(--cc-radius-pill);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.body-customer .align-center form input[type="submit"]:hover {
+  background: var(--cc-gray-600);
+}
+
+.body-customer .align-center > h2.text-center {
+  margin: 28px 0 20px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
