@@ -35,9 +35,9 @@
   --cc-radius-card: 14px;
   --cc-radius-shell: 20px;
   --cc-radius-search: 999px;
-  --cc-font: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --cc-font: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --cc-max-width: 1220px;
-  --cc-page-padding-x: 10px;
+  --cc-page-padding-x: 16px;
   --cc-header-borderColor: var(--cc-gray-200);
   --cc-footer-muted: #666666;
   --cc-footer-accent: #d0021b;

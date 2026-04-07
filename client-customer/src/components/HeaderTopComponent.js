@@ -3,7 +3,9 @@ class HeaderTop extends Component {
     render() {
         return (
             <div className="headerTop">
-                <p>“Select in the calendar on the right hand side convenient for you the day and time and call yourself a free specialist.”</p>
+                <p>
+                    Miễn phí vận chuyển nội thành cho đơn từ 5.000.000₫ · Hỗ trợ kỹ thuật 1-đổi-1 trong 7 ngày (tuỳ sản phẩm)
+                </p>
             </div>
         )
     }

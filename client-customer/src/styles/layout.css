@@ -6,10 +6,11 @@
 .body-customer {
   max-width: var(--cc-max-width);
   width: 100%;
-  margin: 0 auto;
+  margin: 18px auto 28px;
   padding: 0 var(--cc-page-padding-x) 0;
   box-sizing: border-box;
   background-color: #fff;
+  overflow: clip;
 }
 
 .float-left {

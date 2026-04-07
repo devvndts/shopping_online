@@ -3,6 +3,44 @@ import { Link } from "react-router-dom";
 import MyContext from "../contexts/MyContext";
 class Inform extends Component {
   static contextType = MyContext;
+  constructor(props) {
+    super(props);
+    this.state = { open: false };
+    this.menuRootRef = React.createRef();
+  }
+
+  componentDidMount() {
+    document.addEventListener("mousedown", this.onDocMouseDown);
+    document.addEventListener("keydown", this.onDocKeyDown);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener("mousedown", this.onDocMouseDown);
+    document.removeEventListener("keydown", this.onDocKeyDown);
+  }
+
+  onDocMouseDown = (e) => {
+    if (!this.state.open) return;
+    const root = this.menuRootRef.current;
+    if (root && !root.contains(e.target)) {
+      this.setState({ open: false });
+    }
+  };
+
+  onDocKeyDown = (e) => {
+    if (e.key === "Escape") {
+      this.setState({ open: false });
+    }
+  };
+
+  toggleMenu = () => {
+    this.setState((s) => ({ open: !s.open }));
+  };
+
+  closeMenu = () => {
+    this.setState({ open: false });
+  };
+
   render() {
     return (
       <div className="headerAccount">
@@ -16,13 +54,63 @@ class Inform extends Component {
    
             </div>
           ) : (
-            <div>
-              Hello <b>{this.context.customer.name}</b> |
-              <Link to="/home" onClick={() => this.lnkLogoutClick()}>
-                Logout
-              </Link>{" "}
-              |<Link to="/myprofile">My profile</Link>|
-              <Link to='/myorders'> My orders </Link>
+            <div className="cc-account-dd" ref={this.menuRootRef}>
+              <button
+                type="button"
+                className="cc-account-dd__trigger"
+                onClick={this.toggleMenu}
+                aria-haspopup="menu"
+                aria-expanded={this.state.open ? "true" : "false"}
+              >
+                <span className="cc-account-dd__label">
+                  {this.context.customer && this.context.customer.name
+                    ? this.context.customer.name
+                    : "Tài khoản"}
+                </span>
+                <span className="cc-account-dd__chev" aria-hidden>
+                  ▾
+                </span>
+              </button>
+
+              {this.state.open ? (
+                <div className="cc-account-dd__menu" role="menu">
+                  <div className="cc-account-dd__head">
+                    Xin chào{" "}
+                    <b>
+                      {this.context.customer && this.context.customer.name
+                        ? this.context.customer.name
+                        : "bạn"}
+                    </b>
+                  </div>
+                  <Link
+                    to="/myprofile"
+                    role="menuitem"
+                    className="cc-account-dd__item"
+                    onClick={this.closeMenu}
+                  >
+                    Tài khoản
+                  </Link>
+                  <Link
+                    to="/myorders"
+                    role="menuitem"
+                    className="cc-account-dd__item"
+                    onClick={this.closeMenu}
+                  >
+                    Đơn hàng
+                  </Link>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="cc-account-dd__item cc-account-dd__item--danger"
+                    onClick={() => {
+                      this.closeMenu();
+                      this.lnkLogoutClick();
+                    }}
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

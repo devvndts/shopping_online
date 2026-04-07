@@ -8,6 +8,9 @@ import Category from "./CategoryComponent";
 import Product from "./ProductComponent";
 import Customer from "./CustomerComponent";
 import Order from "./OrderComponent";
+import Settings from "./SettingsComponent";
+import Slide from "./SlideComponent";
+import Review from "./ReviewComponent";
 
 class Main extends Component {
   static contextType = MyContext;
@@ -68,6 +71,9 @@ class Main extends Component {
                 <Route path="/admin/product" element={<Product />} />
                 <Route path="/admin/customers" element={<Customer />} />
                 <Route path="/admin/orders" element={<Order />} />
+                <Route path="/admin/settings" element={<Settings />} />
+                <Route path="/admin/slides" element={<Slide />} />
+                <Route path="/admin/reviews" element={<Review />} />
               </Routes>
             </div>
           </main>

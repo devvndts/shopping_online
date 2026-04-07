@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import { Navigate } from 'react-router-dom';
 import MyContext from '../contexts/MyContext';
+import { formatVnd } from '../utils/formatVnd';
 
 class Myorders extends Component {
 
@@ -12,8 +13,26 @@ class Myorders extends Component {
 
     this.state = {
       orders: [],
-      order: null
+      order: null,
+      expandedId: '',
     };
+  }
+
+  statusMeta(status) {
+    const s = String(status || '').toUpperCase();
+    if (s === 'APPROVED') return { label: 'Đã duyệt', tone: 'ok' };
+    if (s === 'PENDING') return { label: 'Chờ duyệt', tone: 'warn' };
+    if (s === 'CANCELLED' || s === 'CANCELED') return { label: 'Đã huỷ', tone: 'bad' };
+    if (s === 'SHIPPING') return { label: 'Đang giao', tone: 'info' };
+    if (s === 'DONE' || s === 'COMPLETED') return { label: 'Hoàn tất', tone: 'ok' };
+    return { label: status || '—', tone: 'neutral' };
+  }
+
+  orderSummaryText(order) {
+    if (!order) return '';
+    const st = this.statusMeta(order.status);
+    const when = order.cdate ? new Date(order.cdate).toLocaleString('vi-VN') : '—';
+    return `${when} · ${st.label} · Tổng ${formatVnd(order.total)}`;
   }
 
   render() {
@@ -21,103 +40,121 @@ class Myorders extends Component {
     if (this.context.token === '')
       return (<Navigate replace to='/login' />);
 
-    const orders = this.state.orders.map((item) => {
-      return (
-        <tr
-          key={item._id}
-          className="datatable"
-          onClick={() => this.trItemClick(item)}
-        >
-          <td>{item._id}</td>
-          <td>{new Date(item.cdate).toLocaleString()}</td>
-          <td>{item.customer.name}</td>
-          <td>{item.customer.phone}</td>
-          <td>{item.total}</td>
-          <td>{item.status}</td>
-        </tr>
-      );
-    });
-
-    if (this.state.order) {
-      var items = this.state.order.items.map((item, index) => {
-        return (
-          <tr key={item.product._id} className="datatable">
-            <td>{index + 1}</td>
-            <td>{item.product._id}</td>
-            <td>{item.product.name}</td>
-
-            <td>
-              <img
-                src={"data:image/jpg;base64," + item.product.image}
-                width="70px"
-                height="70px"
-                alt=""
-              />
-            </td>
-
-            <td>{item.product.price}</td>
-            <td>{item.quantity}</td>
-            <td>{item.product.price * item.quantity}</td>
-          </tr>
-        );
-      });
-    }
-
     return (
-      <div>
+      <div className="cc-orders align-center cc-home__section">
+        <div className="cc-section-shell cc-orders__shell">
+          <header className="cc-orders__head">
+            <div>
+              <h1 className="cc-orders__title">Đơn hàng</h1>
+              <p className="cc-orders__subtitle">
+                Chọn một đơn để xem chi tiết sản phẩm.
+              </p>
+            </div>
+          </header>
 
-        <div className="align-center">
+          <section>
+            <h2 className="cc-orders__card-title">Danh sách đơn</h2>
+            {this.state.orders && this.state.orders.length > 0 ? (
+              <div className="cc-orders__list" role="list">
+                {this.state.orders.map((o) => {
+                  const st = this.statusMeta(o.status);
+                  const when = o.cdate ? new Date(o.cdate).toLocaleString('vi-VN') : '—';
+                  const isOpen = String(this.state.expandedId) === String(o._id);
+                  return (
+                    <div key={o._id} className="cc-orders__group" role="listitem">
+                      <button
+                        type="button"
+                        className={'cc-orders__row' + (isOpen ? ' cc-orders__row--open' : '')}
+                        onClick={() => this.toggleOrder(o)}
+                        aria-expanded={isOpen ? 'true' : 'false'}
+                      >
+                        <div className="cc-orders__row-top">
+                          <div className="cc-orders__id" title={o._id}>
+                            #{String(o._id).slice(-8)}
+                          </div>
+                          <span className={'cc-orders__badge cc-orders__badge--' + st.tone}>
+                            {st.label}
+                          </span>
+                        </div>
+                        <div className="cc-orders__row-mid">
+                          <div className="cc-orders__meta">
+                            <span className="cc-orders__meta-label">Thời gian</span>
+                            <span className="cc-orders__meta-value">{when}</span>
+                          </div>
+                          <div className="cc-orders__meta">
+                            <span className="cc-orders__meta-label">Tổng</span>
+                            <span className="cc-orders__meta-value cc-orders__total">
+                              {formatVnd(o.total)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="cc-orders__row-bot">
+                          <div className="cc-orders__sub">
+                            {o.customer && o.customer.name ? o.customer.name : '—'}
+                            {o.customer && o.customer.phone ? ` · ${o.customer.phone}` : ''}
+                          </div>
+                          <div className="cc-orders__hint">
+                            {isOpen ? 'Thu gọn' : 'Xem chi tiết'}
+                            <span className="cc-orders__chev" aria-hidden="true">
+                              {isOpen ? '▴' : '▾'}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
 
-          <h2 className="text-center">ORDER LIST</h2>
+                      {isOpen ? (
+                        <div className="cc-orders__expand" role="region" aria-label="Chi tiết đơn">
+                          <div className="cc-orders__summary">
+                            <div className="cc-orders__summary-row">
+                              <span>Mã đơn</span>
+                              <b>{o._id}</b>
+                            </div>
+                            <div className="cc-orders__summary-row">
+                              <span>Trạng thái</span>
+                              <span className={'cc-orders__badge cc-orders__badge--' + st.tone}>
+                                {st.label}
+                              </span>
+                            </div>
+                            <div className="cc-orders__summary-row">
+                              <span>Tổng tiền</span>
+                              <b className="cc-orders__total">{formatVnd(o.total)}</b>
+                            </div>
+                          </div>
 
-          <table className="datatable" border="1">
-            <tbody>
-
-              <tr className="datatable">
-                <th>ID</th>
-                <th>Creation date</th>
-                <th>Cust. name</th>
-                <th>Cust. phone</th>
-                <th>Total</th>
-                <th>Status</th>
-              </tr>
-
-              {orders}
-
-            </tbody>
-          </table>
-
+                          <div className="cc-orders__items">
+                            {(o.items || []).map((it) => (
+                              <div className="cc-orders__item" key={it.product._id}>
+                                <img
+                                  className="cc-orders__thumb"
+                                  src={'data:image/jpg;base64,' + it.product.image}
+                                  alt={it.product.name}
+                                  loading="lazy"
+                                />
+                                <div className="cc-orders__item-main">
+                                  <div className="cc-orders__item-name">{it.product.name}</div>
+                                  <div className="cc-orders__item-sub">
+                                    {formatVnd(it.product.price)} · SL {it.quantity}
+                                  </div>
+                                </div>
+                                <div className="cc-orders__item-right">
+                                  <div className="cc-orders__item-total">
+                                    {formatVnd(it.product.price * it.quantity)}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="cc-orders__empty">Bạn chưa có đơn hàng nào.</div>
+            )}
+          </section>
         </div>
-
-        {this.state.order ?
-
-          <div className="align-center">
-
-            <h2 className="text-center">ORDER DETAIL</h2>
-
-            <table className="datatable" border="1">
-              <tbody>
-
-                <tr className="datatable">
-                  <th>No.</th>
-                  <th>Prod. ID</th>
-                  <th>Prod. name</th>
-                  <th>Image</th>
-                  <th>Price</th>
-                  <th>Quantity</th>
-                  <th>Amount</th>
-                </tr>
-
-                {items}
-
-              </tbody>
-            </table>
-
-          </div>
-
-          : <div />
-        }
-
       </div>
     );
   }
@@ -134,8 +171,12 @@ class Myorders extends Component {
 
   }
 
-  trItemClick(item) {
-    this.setState({ order: item });
+  toggleOrder(item) {
+    const id = item && item._id ? String(item._id) : '';
+    this.setState((s) => ({
+      order: item,
+      expandedId: s.expandedId === id ? '' : id,
+    }));
   }
 
   apiGetOrdersByCustID(cid) {

@@ -13,6 +13,7 @@ import Mycart from './MycartComponent';
 import Myorders from './MyordersComponent';
 import HeaderTop from "./HeaderTopComponent";
 import Footer from "./FooterComponent";
+import HomeSliderGate from "./HomeSliderGate";
 class Main extends Component {
   render() {
     return (
@@ -20,6 +21,7 @@ class Main extends Component {
         <HeaderTop />
         <div className="body-customer cc-layout">
           <Menu />
+          <HomeSliderGate />
           <main className="site-main">
             <Routes>
               <Route path="/" element={<Navigate replace to="/home" />} />

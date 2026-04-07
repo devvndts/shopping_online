@@ -25,90 +25,103 @@ class Myprofile extends Component {
     }
 
     return (
-      <div className="align-center">
-        <h2 className="text-center">MY PROFILE</h2>
+      <div className="cc-auth align-center cc-home__section">
+        <div className="cc-section-shell cc-auth__shell">
+          <header className="cc-auth__head">
+            <h1 className="cc-auth__title">Tài khoản</h1>
+            <p className="cc-auth__subtitle">
+              Cập nhật thông tin liên hệ để thuận tiện giao hàng và hỗ trợ.
+            </p>
+          </header>
 
-        <form>
-          <table className="align-center">
-            <tbody>
-              <tr>
-                <td>Username</td>
-                <td>
-                  <input
-                    type="text"
-                    value={this.state.txtUsername}
-                    onChange={(e) => {
-                      this.setState({ txtUsername: e.target.value });
-                    }}
-                  />
-                </td>
-              </tr>
+          <form className="cc-auth__form" onSubmit={(e) => this.btnUpdateClick(e)}>
+            <div className="cc-auth__grid">
+              <div className="cc-auth__field">
+                <label className="cc-auth__label" htmlFor="cc-profile-username">
+                  Tên đăng nhập
+                </label>
+                <input
+                  id="cc-profile-username"
+                  className="cc-auth__input"
+                  type="text"
+                  autoComplete="username"
+                  value={this.state.txtUsername}
+                  onChange={(e) => {
+                    this.setState({ txtUsername: e.target.value });
+                  }}
+                />
+              </div>
 
-              <tr>
-                <td>Password</td>
-                <td>
-                  <input
-                    type="password"
-                    value={this.state.txtPassword}
-                    onChange={(e) => {
-                      this.setState({ txtPassword: e.target.value });
-                    }}
-                  />
-                </td>
-              </tr>
+              <div className="cc-auth__field">
+                <label className="cc-auth__label" htmlFor="cc-profile-password">
+                  Mật khẩu
+                </label>
+                <input
+                  id="cc-profile-password"
+                  className="cc-auth__input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={this.state.txtPassword}
+                  onChange={(e) => {
+                    this.setState({ txtPassword: e.target.value });
+                  }}
+                />
+              </div>
 
-              <tr>
-                <td>Name</td>
-                <td>
-                  <input
-                    type="text"
-                    value={this.state.txtName}
-                    onChange={(e) => {
-                      this.setState({ txtName: e.target.value });
-                    }}
-                  />
-                </td>
-              </tr>
+              <div className="cc-auth__field">
+                <label className="cc-auth__label" htmlFor="cc-profile-name">
+                  Họ và tên
+                </label>
+                <input
+                  id="cc-profile-name"
+                  className="cc-auth__input"
+                  type="text"
+                  autoComplete="name"
+                  value={this.state.txtName}
+                  onChange={(e) => {
+                    this.setState({ txtName: e.target.value });
+                  }}
+                />
+              </div>
 
-              <tr>
-                <td>Phone</td>
-                <td>
-                  <input
-                    type="tel"
-                    value={this.state.txtPhone}
-                    onChange={(e) => {
-                      this.setState({ txtPhone: e.target.value });
-                    }}
-                  />
-                </td>
-              </tr>
+              <div className="cc-auth__field">
+                <label className="cc-auth__label" htmlFor="cc-profile-phone">
+                  Số điện thoại
+                </label>
+                <input
+                  id="cc-profile-phone"
+                  className="cc-auth__input"
+                  type="tel"
+                  autoComplete="tel"
+                  value={this.state.txtPhone}
+                  onChange={(e) => {
+                    this.setState({ txtPhone: e.target.value });
+                  }}
+                />
+              </div>
 
-              <tr>
-                <td>Email</td>
-                <td>
-                  <input
-                    type="email"
-                    value={this.state.txtEmail}
-                    onChange={(e) => {
-                      this.setState({ txtEmail: e.target.value });
-                    }}
-                  />
-                </td>
-              </tr>
+              <div className="cc-auth__field cc-auth__field--full">
+                <label className="cc-auth__label" htmlFor="cc-profile-email">
+                  Email
+                </label>
+                <input
+                  id="cc-profile-email"
+                  className="cc-auth__input"
+                  type="email"
+                  autoComplete="email"
+                  value={this.state.txtEmail}
+                  onChange={(e) => {
+                    this.setState({ txtEmail: e.target.value });
+                  }}
+                />
+              </div>
+            </div>
 
-              <tr>
-                <td></td>
-                <td>
-                  <input
-                    type="submit"
-                    value="UPDATE"
-                    onClick={(e) => this.btnUpdateClick(e)}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </form>
+            <button className="cc-auth__submit" type="submit">
+              Lưu thay đổi
+            </button>
+          </form>
+        </div>
       </div>
     );
   }

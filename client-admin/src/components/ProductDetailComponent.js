@@ -18,6 +18,7 @@ class ProductDetail extends Component {
       txtID: '',
       txtName: '',
       txtPrice: '',
+      txtDescription: '',
       cmbCategory: '',
       imgProduct: '',
       notice: null,
@@ -55,6 +56,7 @@ class ProductDetail extends Component {
         txtID: it._id,
         txtName: it.name || '',
         txtPrice: String(it.price ?? ''),
+        txtDescription: it.description || '',
         cmbCategory: it.category && it.category._id ? it.category._id : '',
         imgProduct: it.image ? 'data:image/jpg;base64,' + it.image : '',
         notice: null,
@@ -66,6 +68,7 @@ class ProductDetail extends Component {
         txtID: '',
         txtName: '',
         txtPrice: '',
+        txtDescription: '',
         cmbCategory: first,
         imgProduct: '',
         notice: null,
@@ -94,6 +97,7 @@ class ProductDetail extends Component {
     const price = parseInt(this.state.txtPrice, 10);
     const category = this.state.cmbCategory;
     const image = stripBase64DataUrl(this.state.imgProduct);
+    const description = (this.state.txtDescription || '').trim();
 
     if (!name || !price || !category || !image) {
       this.setNotice(
@@ -103,7 +107,7 @@ class ProductDetail extends Component {
       return;
     }
     this.setNotice(null);
-    this.apiPostProduct({ name, price, category, image });
+    this.apiPostProduct({ name, price, category, image, description });
   }
 
   btnUpdateClick(e) {
@@ -113,6 +117,7 @@ class ProductDetail extends Component {
     const price = parseInt(this.state.txtPrice, 10);
     const category = this.state.cmbCategory;
     const image = stripBase64DataUrl(this.state.imgProduct);
+    const description = (this.state.txtDescription || '').trim();
 
     if (!id || !name || !price || !category || !image) {
       this.setNotice(
@@ -122,7 +127,7 @@ class ProductDetail extends Component {
       return;
     }
     this.setNotice(null);
-    this.apiPutProduct(id, { name, price, category, image });
+    this.apiPutProduct(id, { name, price, category, image, description });
   }
 
   btnDeleteClick(e) {
@@ -297,6 +302,21 @@ class ProductDetail extends Component {
               onChange={(e) =>
                 this.setState({ txtPrice: e.target.value, notice: null })
               }
+            />
+          </div>
+          <div className="ad-form__group">
+            <label className="ad-form__label" htmlFor="ad-prod-desc">
+              Mô tả / thông tin chi tiết
+            </label>
+            <textarea
+              id="ad-prod-desc"
+              className="ad-form__textarea"
+              rows={5}
+              value={this.state.txtDescription}
+              onChange={(e) =>
+                this.setState({ txtDescription: e.target.value, notice: null })
+              }
+              placeholder="Nhập mô tả sản phẩm, cấu hình, bảo hành…"
             />
           </div>
           <div className="ad-form__group">

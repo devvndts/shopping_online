@@ -3,8 +3,9 @@ import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import withRouter from '../utils/withRouter';
 import MyContext from '../contexts/MyContext';
-import { notifySuccess, notifyWarning } from '../utils/notify';
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '../utils/notify';
 import { formatVnd } from '../utils/formatVnd';
+import ProductCard from './ProductCard';
 
 class ProductDetail extends Component {
   static contextType = MyContext;
@@ -14,7 +15,16 @@ class ProductDetail extends Component {
     this.state = {
       product: null,
       status: 'loading',
-      txtQuantity: 1
+      txtQuantity: 1,
+      related: [],
+      relatedLoading: false,
+      tab: 'detail', // detail | reviews
+      reviews: [],
+      reviewsLoading: false,
+      reviewStars: 5,
+      reviewContent: '',
+      reviewSubmitting: false,
+      descExpanded: false,
     };
   }
 
@@ -87,6 +97,15 @@ class ProductDetail extends Component {
     const cat = prod.category || {};
     const catId = cat._id ? String(cat._id) : '';
     const catName = cat.name || 'Danh mục';
+    const reviews = this.state.reviews || [];
+    const avgStars =
+      reviews.length > 0
+        ? Math.round(
+            (reviews.reduce((sum, r) => sum + (parseInt(r.stars, 10) || 0), 0) /
+              reviews.length) *
+              10
+          ) / 10
+        : 0;
 
     return (
       <div className="cc-pdp align-center cc-home__section">
@@ -195,8 +214,271 @@ class ProductDetail extends Component {
               </div>
             </div>
           </div>
+
+          <section className="cc-pdp__panel" aria-label="Thông tin & đánh giá">
+            <div className="cc-pdp__tabs" role="tablist" aria-label="Tabs sản phẩm">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={this.state.tab === 'detail' ? 'true' : 'false'}
+                className={
+                  'cc-pdp__tab' + (this.state.tab === 'detail' ? ' cc-pdp__tab--active' : '')
+                }
+                onClick={() => this.setState({ tab: 'detail' })}
+              >
+                Thông tin chi tiết
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={this.state.tab === 'reviews' ? 'true' : 'false'}
+                className={
+                  'cc-pdp__tab' + (this.state.tab === 'reviews' ? ' cc-pdp__tab--active' : '')
+                }
+                onClick={() => this.setState({ tab: 'reviews' })}
+              >
+                Đánh giá {reviews.length ? `(${reviews.length})` : ''}
+              </button>
+              <div className="cc-pdp__tabs-spacer" />
+              {reviews.length ? (
+                <div className="cc-pdp__rating" aria-label="Điểm đánh giá trung bình">
+                  <span className="cc-stars" aria-hidden="true">
+                    {this.renderStars(avgStars)}
+                  </span>
+                  <span className="cc-pdp__rating-text">
+                    {avgStars}/5 · {reviews.length} đánh giá
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            {this.state.tab === 'detail' ? (
+              <div className="cc-pdp__tab-body" role="tabpanel">
+                <h2 className="cc-pdp__panel-title">Mô tả</h2>
+                {this.renderDescription(prod)}
+              </div>
+            ) : (
+              <div className="cc-pdp__tab-body" role="tabpanel">
+                <h2 className="cc-pdp__panel-title">Đánh giá sản phẩm</h2>
+
+                {this.renderReviewComposer(prod)}
+
+                {this.state.reviewsLoading ? (
+                  <div className="cc-pdp__reviews-state">Đang tải đánh giá…</div>
+                ) : reviews.length === 0 ? (
+                  <div className="cc-pdp__reviews-empty">
+                    Chưa có đánh giá nào cho sản phẩm này.
+                  </div>
+                ) : (
+                  <div className="cc-pdp__reviews">
+                    {reviews.map((r) => (
+                      <article key={r._id} className="cc-pdp__review">
+                        <div className="cc-pdp__review-row">
+                          <div className="cc-pdp__review-avatar" aria-hidden="true">
+                            {this.getInitials(r.author || 'Ẩn danh')}
+                          </div>
+                          <div className="cc-pdp__review-main">
+                            <header className="cc-pdp__review-head">
+                              <div className="cc-pdp__review-ident">
+                                <div className="cc-pdp__review-author">
+                                  {r.author || 'Ẩn danh'}
+                                </div>
+                                {r.cdate ? (
+                                  <div className="cc-pdp__review-date">
+                                    {new Date(r.cdate).toLocaleDateString('vi-VN')}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="cc-pdp__review-stars" aria-label={`${r.stars}/5`}>
+                                <span className="cc-stars" aria-hidden="true">
+                                  {this.renderStars(r.stars)}
+                                </span>
+                                <span className="cc-pdp__review-score">
+                                  {Math.min(5, Math.max(1, parseInt(r.stars, 10) || 5))}.0
+                                </span>
+                              </div>
+                            </header>
+                            <div className="cc-pdp__review-content">{r.content}</div>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {this.renderRelated(prod)}
         </div>
       </div>
+    );
+  }
+
+  renderStars(stars) {
+    const s = Math.round(Math.min(5, Math.max(0, Number(stars) || 0)));
+    return '★'.repeat(s) + '☆'.repeat(5 - s);
+  }
+
+  renderDescription(prod) {
+    const text = ((prod && prod.description) || '').trim();
+    if (!text) {
+      return <p className="cc-pdp__desc">Chưa có mô tả cho sản phẩm này.</p>;
+    }
+
+    const long = text.length > 360;
+    const expanded = !!this.state.descExpanded;
+
+    return (
+      <div className={'cc-pdp__desc-wrap' + (expanded ? ' cc-pdp__desc-wrap--open' : '')}>
+        <p className="cc-pdp__desc">{text}</p>
+
+        {long && !expanded ? <div className="cc-pdp__desc-fade" aria-hidden="true" /> : null}
+
+        {long ? (
+          <div className="cc-pdp__desc-more">
+            <button
+              type="button"
+              className="cc-pdp__more-btn"
+              onClick={() => this.setState((s) => ({ descExpanded: !s.descExpanded }))}
+              aria-expanded={expanded ? 'true' : 'false'}
+            >
+              {expanded ? 'Thu gọn' : 'Xem thêm'}
+              <span className="cc-pdp__more-ico" aria-hidden="true">
+                {expanded ? '▴' : '▾'}
+              </span>
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  getInitials(name) {
+    const raw = String(name || '').trim();
+    if (!raw) return 'U';
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const first = parts[0] ? parts[0][0] : 'U';
+    const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+    return (first + last).toUpperCase();
+  }
+
+  renderReviewComposer(prod) {
+    const token = this.context && this.context.token ? this.context.token : '';
+    const customer = this.context ? this.context.customer : null;
+    const author =
+      (customer && (customer.name || customer.username)) ||
+      (customer && customer.email) ||
+      '';
+
+    if (!token) {
+      return (
+        <div className="cc-pdp__review-box cc-pdp__review-box--muted">
+          <div className="cc-pdp__review-box-title">Gửi đánh giá</div>
+          <div className="cc-pdp__review-box-text">
+            Bạn cần <Link to="/login">đăng nhập</Link> để gửi đánh giá.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <form
+        className="cc-pdp__review-box"
+        onSubmit={(e) => {
+          e.preventDefault();
+          this.submitReview(prod, author);
+        }}
+      >
+        <div className="cc-pdp__review-box-head">
+          <div className="cc-pdp__review-box-title">Gửi đánh giá</div>
+          <div className="cc-pdp__review-box-note">
+            Đánh giá của bạn sẽ hiển thị sau khi được duyệt.
+          </div>
+        </div>
+
+        <div className="cc-pdp__review-fields">
+          <label className="cc-pdp__review-label">
+            Số sao
+            <div className="cc-pdp__star-picker" role="radiogroup" aria-label="Chọn số sao">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  role="radio"
+                  aria-checked={this.state.reviewStars === n ? 'true' : 'false'}
+                  className={
+                    'cc-pdp__star-btn' +
+                    (this.state.reviewStars >= n ? ' cc-pdp__star-btn--on' : '')
+                  }
+                  onClick={() => this.setState({ reviewStars: n })}
+                  disabled={this.state.reviewSubmitting}
+                  title={`${n} sao`}
+                >
+                  ★
+                </button>
+              ))}
+              <span className="cc-pdp__star-caption">
+                {this.state.reviewStars}/5
+              </span>
+            </div>
+          </label>
+
+          <label className="cc-pdp__review-label">
+            Nội dung
+            <textarea
+              className="cc-pdp__review-textarea"
+              rows={4}
+              value={this.state.reviewContent}
+              onChange={(e) => this.setState({ reviewContent: e.target.value })}
+              placeholder="Chia sẻ trải nghiệm của bạn…"
+              disabled={this.state.reviewSubmitting}
+            />
+          </label>
+
+          <div className="cc-pdp__review-actions">
+            <button
+              type="submit"
+              className="cc-pdp__review-submit"
+              disabled={this.state.reviewSubmitting}
+            >
+              {this.state.reviewSubmitting ? 'Đang gửi…' : 'Gửi đánh giá'}
+            </button>
+          </div>
+        </div>
+      </form>
+    );
+  }
+
+  renderRelated(prod) {
+    const list = this.state.related || [];
+    const show = list.length > 0;
+    if (this.state.relatedLoading && !show) {
+      return (
+        <section className="cc-pdp__related" aria-label="Sản phẩm liên quan">
+          <div className="cc-pdp__related-head">
+            <h2 className="cc-pdp__related-title">Sản phẩm liên quan</h2>
+            <p className="cc-pdp__related-sub">Đang tải gợi ý…</p>
+          </div>
+        </section>
+      );
+    }
+    if (!show) return null;
+
+    return (
+      <section className="cc-pdp__related" aria-label="Sản phẩm liên quan">
+        <div className="cc-pdp__related-head">
+          <h2 className="cc-pdp__related-title">Sản phẩm liên quan</h2>
+          <p className="cc-pdp__related-sub">
+            Gợi ý thêm sản phẩm cùng danh mục để bạn dễ lựa chọn.
+          </p>
+        </div>
+        <div className="cc-product-list-page__grid">
+          {list.map((item) => (
+            <ProductCard key={item._id} item={item} showCategoryMeta={false} />
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -206,7 +488,17 @@ class ProductDetail extends Component {
 
   componentDidUpdate(prevProps) {
     if (this.props.params.id !== prevProps.params.id) {
-      this.setState({ product: null, status: 'loading', txtQuantity: 1 });
+      this.setState({
+        product: null,
+        status: 'loading',
+        txtQuantity: 1,
+        related: [],
+        relatedLoading: false,
+        tab: 'detail',
+        reviews: [],
+        reviewsLoading: false,
+        descExpanded: false,
+      });
       this.apiGetProduct(this.props.params.id);
     }
   }
@@ -227,11 +519,88 @@ class ProductDetail extends Component {
         this.setState({
           product: result,
           status: 'ready',
-          txtQuantity: 1
+          txtQuantity: 1,
+          related: [],
+          relatedLoading: false,
+          tab: 'detail',
+          reviews: [],
+          reviewsLoading: false,
         });
+        this.apiGetReviews(result._id);
+        this.apiGetRelated(result);
       })
       .catch(() => {
         this.setState({ product: null, status: 'error' });
+      });
+  }
+
+  apiGetReviews(productId) {
+    if (!productId) return;
+    this.setState({ reviewsLoading: true });
+    axios
+      .get('/api/customer/reviews/product/' + productId)
+      .then((res) => {
+        this.setState({ reviews: res.data || [], reviewsLoading: false });
+      })
+      .catch(() => this.setState({ reviews: [], reviewsLoading: false }));
+  }
+
+  submitReview(prod, author) {
+    const token = this.context && this.context.token ? this.context.token : '';
+    if (!token) {
+      notifyInfo('Vui lòng đăng nhập để gửi đánh giá.');
+      return;
+    }
+    const content = (this.state.reviewContent || '').trim();
+    if (content.length < 8) {
+      notifyWarning('Nội dung đánh giá tối thiểu 8 ký tự.');
+      return;
+    }
+
+    const payload = {
+      productId: prod._id,
+      productName: prod.name,
+      author: (author || '').trim(),
+      stars: this.state.reviewStars,
+      content,
+    };
+    const config = { headers: { 'x-access-token': token } };
+    this.setState({ reviewSubmitting: true });
+    axios
+      .post('/api/customer/reviews', payload, config)
+      .then((res) => {
+        const ok = res.data && res.data.success;
+        if (!ok) {
+          notifyError((res.data && res.data.message) || 'Gửi đánh giá thất bại.');
+          this.setState({ reviewSubmitting: false });
+          return;
+        }
+        notifySuccess('Đã gửi đánh giá. Chờ admin duyệt để hiển thị.');
+        this.setState({ reviewSubmitting: false, reviewContent: '', reviewStars: 5 });
+        // keep list as active-only; nothing new will appear until approved
+      })
+      .catch(() => {
+        notifyError('Gửi đánh giá thất bại.');
+        this.setState({ reviewSubmitting: false });
+      });
+  }
+
+  apiGetRelated(prod) {
+    if (!prod) return;
+    const id = prod._id ? String(prod._id) : '';
+    const cat = prod.category || {};
+    const cid = cat._id ? String(cat._id) : '';
+    if (!cid) return;
+
+    this.setState({ relatedLoading: true });
+    axios
+      .get('/api/customer/products/category/' + cid, { params: { limit: 12 } })
+      .then((res) => {
+        const list = (res.data || []).filter((p) => String(p._id) !== id).slice(0, 4);
+        this.setState({ related: list, relatedLoading: false });
+      })
+      .catch(() => {
+        this.setState({ related: [], relatedLoading: false });
       });
   }
 

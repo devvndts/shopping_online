@@ -7,6 +7,9 @@ const JwtUtil = require('../utils/JwtUtil');
 const CategoryDAO = require("../models/CategoryDAO");
 const ProductDAO = require("../models/ProductDAO");
 const OrderDAO = require('../models/OrderDAO');
+const SettingDAO = require('../models/SettingDAO');
+const SlideDAO = require('../models/SlideDAO');
+const ReviewDAO = require('../models/ReviewDAO');
 
 const CustomerDAO = require("../models/CustomerDAO");
 
@@ -187,5 +190,83 @@ router.get('/orders/customer/:cid', JwtUtil.checkToken, async function (req, res
   const _cid = req.params.cid;
   const orders = await OrderDAO.selectByCustID(_cid);
   res.json(orders);
+});
+
+// Public UI settings
+router.get('/settings/auth-hero-bg', async function (req, res) {
+  const row = await SettingDAO.getByKey('authHeroBg');
+  if (!row || !row.data) {
+    return res.json({ mime: '', data: '', updatedAt: 0 });
+  }
+  res.json({ mime: row.mime || '', data: row.data || '', updatedAt: row.updatedAt || 0 });
+});
+
+router.get('/settings/site-logo', async function (req, res) {
+  const row = await SettingDAO.getByKey('siteLogo');
+  if (!row || !row.data) {
+    return res.json({ mime: '', data: '', updatedAt: 0 });
+  }
+  res.json({ mime: row.mime || '', data: row.data || '', updatedAt: row.updatedAt || 0 });
+});
+
+router.get('/slides', async function (req, res) {
+  // return metadata only (faster than embedding base64 in JSON)
+  const rows = await SlideDAO.selectActiveMeta();
+  res.json(rows);
+});
+
+router.get('/slides/:id/image', async function (req, res) {
+  const _id = req.params.id;
+  const row = await SlideDAO.selectImageById(_id);
+  if (!row || !row.imageMime || !row.imageData) {
+    return res.status(404).end();
+  }
+  try {
+    const buf = Buffer.from(String(row.imageData), 'base64');
+    res.setHeader('Content-Type', row.imageMime);
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    if (row.updatedAt) res.setHeader('ETag', String(row.updatedAt));
+    res.end(buf);
+  } catch {
+    res.status(500).end();
+  }
+});
+
+router.get('/reviews/product/:pid', async function (req, res) {
+  const pid = req.params.pid;
+  const rows = await ReviewDAO.selectActiveByProductId(pid);
+  res.json(rows);
+});
+
+// Customer submit review (pending approval)
+router.post('/reviews', JwtUtil.checkToken, async function (req, res) {
+  const productId = (req.body.productId || '').trim();
+  const productName = (req.body.productName || '').trim();
+  const author = (req.body.author || '').trim();
+  const stars = req.body.stars;
+  const content = (req.body.content || '').trim();
+
+  if (!productId || !productName || !content) {
+    return res
+      .status(400)
+      .json({ success: false, message: 'Thiếu thông tin đánh giá.' });
+  }
+  if (content.length < 8) {
+    return res
+      .status(400)
+      .json({ success: false, message: 'Nội dung đánh giá quá ngắn.' });
+  }
+
+  const safeAuthor = author || (req.decoded && req.decoded.username) || 'Khách hàng';
+
+  const row = await ReviewDAO.insert({
+    productId,
+    productName,
+    author: safeAuthor,
+    stars,
+    content,
+    active: 0, // pending approval
+  });
+  res.json({ success: true, review: row });
 });
 module.exports = router;

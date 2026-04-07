@@ -1,17 +1,27 @@
 import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
+import { notifyError, notifySuccess } from '../utils/notify';
+import { formatVnd } from '../utils/formatVnd';
+import { FiBox, FiClock, FiDollarSign } from 'react-icons/fi';
 
 class Order extends Component {
   static contextType = MyContext;
 
   constructor(props) {
     super(props);
-    this.state = { orders: [], loading: true, expandedId: null };
+    this.state = {
+      orders: [],
+      loading: true,
+      expandedId: null,
+      summary: null,
+      summaryLoading: true,
+    };
   }
 
   componentDidMount() {
     this.apiGetOrders();
+    this.apiGetSummary();
   }
 
   apiGetOrders() {
@@ -26,6 +36,31 @@ class Order extends Component {
       });
   }
 
+  apiGetSummary() {
+    const config = { headers: { 'x-access-token': this.context.token } };
+    this.setState({ summaryLoading: true });
+    axios
+      .get('/api/admin/orders/summary', config)
+      .then((res) => this.setState({ summary: res.data || null, summaryLoading: false }))
+      .catch(() => this.setState({ summary: null, summaryLoading: false }));
+  }
+
+  setStatus = (id, status) => {
+    const config = { headers: { 'x-access-token': this.context.token } };
+    axios
+      .patch('/api/admin/orders/' + id + '/status', { status }, config)
+      .then((res) => {
+        if (res.data && res.data.success) {
+          notifySuccess('Đã cập nhật trạng thái đơn.');
+          this.apiGetOrders();
+          this.apiGetSummary();
+        } else {
+          notifyError((res.data && res.data.message) || 'Cập nhật thất bại.');
+        }
+      })
+      .catch(() => notifyError('Cập nhật thất bại.'));
+  };
+
   toggleExpand = (id) => {
     this.setState((s) => ({
       expandedId: s.expandedId === id ? null : id,
@@ -38,7 +73,7 @@ class Order extends Component {
   }
 
   render() {
-    const { orders, loading, expandedId } = this.state;
+    const { orders, loading, expandedId, summary, summaryLoading } = this.state;
 
     return (
       <div className="ad-page">
@@ -46,6 +81,39 @@ class Order extends Component {
         <p className="ad-page__lead">
           Theo dõi đơn đặt hàng. Nhấn một dòng để xem chi tiết sản phẩm.
         </p>
+
+        <div className="ad-dash__grid" style={{ marginBottom: 18 }}>
+          <div className="ad-dash-card ad-dash-card--static">
+            <div className="ad-dash-card__icon ad-dash-card__icon--blue" aria-hidden>
+              <FiDollarSign size={22} />
+            </div>
+            <h3 className="ad-dash-card__title">Doanh thu (đã duyệt)</h3>
+            <div className="ad-dash-stat">
+              {summaryLoading ? '—' : formatVnd(summary?.revenueApproved || 0)}
+            </div>
+            <p className="ad-dash-card__desc">Tổng tiền của các đơn có trạng thái APPROVED.</p>
+          </div>
+          <div className="ad-dash-card ad-dash-card--static">
+            <div className="ad-dash-card__icon ad-dash-card__icon--amber" aria-hidden>
+              <FiClock size={22} />
+            </div>
+            <h3 className="ad-dash-card__title">Đơn chờ duyệt</h3>
+            <div className="ad-dash-stat">
+              {summaryLoading ? '—' : (summary?.pending ?? 0)}
+            </div>
+            <p className="ad-dash-card__desc">Số đơn đang ở trạng thái PENDING.</p>
+          </div>
+          <div className="ad-dash-card ad-dash-card--static">
+            <div className="ad-dash-card__icon ad-dash-card__icon--violet" aria-hidden>
+              <FiBox size={22} />
+            </div>
+            <h3 className="ad-dash-card__title">Tổng đơn</h3>
+            <div className="ad-dash-stat">
+              {summaryLoading ? '—' : (summary?.orders ?? orders.length)}
+            </div>
+            <p className="ad-dash-card__desc">Tổng số đơn trong hệ thống.</p>
+          </div>
+        </div>
 
         <div className="ad-card">
           <div className="ad-card__head">
@@ -76,6 +144,7 @@ class Order extends Component {
                         <th>Tổng</th>
                         <th>Trạng thái</th>
                         <th>Dòng</th>
+                        <th style={{ width: 220 }}>Duyệt</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -100,13 +169,33 @@ class Order extends Component {
                               <td>{this.formatDate(item.cdate)}</td>
                               <td>{cust.name || '—'}</td>
                               <td>{cust.phone || '—'}</td>
-                              <td>{item.total}</td>
+                              <td>{formatVnd(item.total)}</td>
                               <td>{item.status || '—'}</td>
                               <td>{nLines}</td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <div className="ad-actions">
+                                  <button
+                                    type="button"
+                                    className="ad-btn ad-btn--primary ad-btn--sm"
+                                    disabled={String(item.status || '').toUpperCase() === 'APPROVED'}
+                                    onClick={() => this.setStatus(item._id, 'APPROVED')}
+                                  >
+                                    Duyệt
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="ad-btn ad-btn--danger ad-btn--sm"
+                                    disabled={String(item.status || '').toUpperCase() === 'CANCELLED'}
+                                    onClick={() => this.setStatus(item._id, 'CANCELLED')}
+                                  >
+                                    Huỷ
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                             {open && nLines > 0 ? (
                               <tr className="ad-table__row--active">
-                                <td colSpan={7} style={{ padding: '14px 18px' }}>
+                                <td colSpan={8} style={{ padding: '14px 18px' }}>
                                   <strong>Chi tiết:</strong>
                                   <ul
                                     style={{

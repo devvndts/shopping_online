@@ -2,6 +2,18 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import MyContext from '../contexts/MyContext';
+import {
+  FiBox,
+  FiGrid,
+  FiLayers,
+  FiDollarSign,
+  FiClock,
+  FiUsers,
+  FiSliders,
+  FiStar,
+  FiSettings,
+} from 'react-icons/fi';
+import { formatVnd } from '../utils/formatVnd';
 
 class Home extends Component {
   static contextType = MyContext;
@@ -10,7 +22,11 @@ class Home extends Component {
     super(props);
     this.state = {
       categoryCount: null,
-      productPageInfo: null,
+      productCount: null,
+      customerCount: null,
+      slideCount: null,
+      reviewCount: null,
+      orderSummary: null,
       loadError: false,
     };
   }
@@ -23,29 +39,49 @@ class Home extends Component {
     const token = this.context.token;
     const config = { headers: { 'x-access-token': token } };
 
+    const safeLen = (x) => (Array.isArray(x) ? x.length : 0);
+
     axios
       .get('/api/admin/categories', config)
-      .then((res) => {
-        this.setState({ categoryCount: Array.isArray(res.data) ? res.data.length : 0 });
-      })
+      .then((res) => this.setState({ categoryCount: safeLen(res.data) }))
       .catch(() => this.setState({ loadError: true }));
 
     axios
-      .get('/api/admin/products?page=1', config)
-      .then((res) => {
-        const d = res.data || {};
-        this.setState({
-          productPageInfo: {
-            noPages: d.noPages,
-            onPage: (d.products && d.products.length) || 0,
-          },
-        });
-      })
+      .get('/api/admin/products/all', config)
+      .then((res) => this.setState({ productCount: safeLen(res.data) }))
+      .catch(() => {});
+
+    axios
+      .get('/api/admin/customers', config)
+      .then((res) => this.setState({ customerCount: safeLen(res.data) }))
+      .catch(() => {});
+
+    axios
+      .get('/api/admin/slides', config)
+      .then((res) => this.setState({ slideCount: safeLen(res.data) }))
+      .catch(() => {});
+
+    axios
+      .get('/api/admin/reviews', config)
+      .then((res) => this.setState({ reviewCount: safeLen(res.data) }))
+      .catch(() => {});
+
+    axios
+      .get('/api/admin/orders/summary', config)
+      .then((res) => this.setState({ orderSummary: res.data || null }))
       .catch(() => {});
   }
 
   render() {
-    const { categoryCount, productPageInfo, loadError } = this.state;
+    const {
+      categoryCount,
+      productCount,
+      customerCount,
+      slideCount,
+      reviewCount,
+      orderSummary,
+      loadError,
+    } = this.state;
     const hour = new Date().getHours();
     let greet = 'Xin chào';
     if (hour < 12) greet = 'Chào buổi sáng';
@@ -79,13 +115,44 @@ class Home extends Component {
           </p>
         ) : null}
 
+        <div className="ad-dash__grid" style={{ marginBottom: 18 }}>
+          <div className="ad-dash-card ad-dash-card--static">
+            <span className="ad-dash-card__icon ad-dash-card__icon--blue" aria-hidden>
+              <FiDollarSign size={22} />
+            </span>
+            <h3 className="ad-dash-card__title">Doanh thu (đã duyệt)</h3>
+            <div className="ad-dash-stat">
+              {orderSummary ? formatVnd(orderSummary.revenueApproved || 0) : '—'}
+            </div>
+            <p className="ad-dash-card__desc">Tính trên các đơn có trạng thái APPROVED.</p>
+          </div>
+
+          <div className="ad-dash-card ad-dash-card--static">
+            <span className="ad-dash-card__icon ad-dash-card__icon--amber" aria-hidden>
+              <FiClock size={22} />
+            </span>
+            <h3 className="ad-dash-card__title">Đơn chờ duyệt</h3>
+            <div className="ad-dash-stat">{orderSummary ? (orderSummary.pending ?? 0) : '—'}</div>
+            <p className="ad-dash-card__desc">Ưu tiên xử lý để tránh tồn đơn.</p>
+          </div>
+
+          <div className="ad-dash-card ad-dash-card--static">
+            <span className="ad-dash-card__icon ad-dash-card__icon--violet" aria-hidden>
+              <FiBox size={22} />
+            </span>
+            <h3 className="ad-dash-card__title">Tổng đơn</h3>
+            <div className="ad-dash-stat">{orderSummary ? (orderSummary.orders ?? 0) : '—'}</div>
+            <p className="ad-dash-card__desc">Tổng số đơn trong hệ thống.</p>
+          </div>
+        </div>
+
         <div className="ad-dash__grid">
           <Link to="/admin/category" className="ad-dash-card">
             <span
               className="ad-dash-card__icon ad-dash-card__icon--blue"
               aria-hidden
             >
-              ☰
+              <FiLayers size={22} />
             </span>
             <h3 className="ad-dash-card__title">Danh mục</h3>
             <p className="ad-dash-card__desc">
@@ -103,32 +170,74 @@ class Home extends Component {
               className="ad-dash-card__icon ad-dash-card__icon--violet"
               aria-hidden
             >
-              ◫
+              <FiGrid size={22} />
             </span>
             <h3 className="ad-dash-card__title">Sản phẩm</h3>
             <p className="ad-dash-card__desc">
               Quản lý laptop: giá, hình ảnh và gán danh mục.
             </p>
             <span className="ad-dash-card__meta">
-              {productPageInfo
-                ? `${productPageInfo.noPages} trang · ${productPageInfo.onPage} SP/trang đầu`
-                : 'Đang tải…'}
+              {productCount == null ? 'Đang tải…' : `${productCount} sản phẩm`}
             </span>
           </Link>
 
-          <div className="ad-dash-card ad-dash-card--static">
+          <Link to="/admin/orders" className="ad-dash-card">
             <span
               className="ad-dash-card__icon ad-dash-card__icon--amber"
               aria-hidden
             >
-              ✦
+              <FiClock size={22} />
             </span>
             <h3 className="ad-dash-card__title">Đơn hàng</h3>
             <p className="ad-dash-card__desc">
-              Phân hệ đơn hàng sẽ được kết nối trong bản cập nhật tiếp theo.
+              Duyệt đơn, theo dõi trạng thái và xem chi tiết từng đơn.
             </p>
-            <span className="ad-dash-card__meta">Sắp ra mắt</span>
-          </div>
+            <span className="ad-dash-card__meta">
+              {orderSummary ? `${orderSummary.pending ?? 0} chờ duyệt` : 'Mở quản lý đơn'}
+            </span>
+          </Link>
+
+          <Link to="/admin/customers" className="ad-dash-card">
+            <span className="ad-dash-card__icon ad-dash-card__icon--blue" aria-hidden>
+              <FiUsers size={22} />
+            </span>
+            <h3 className="ad-dash-card__title">Khách hàng</h3>
+            <p className="ad-dash-card__desc">Quản lý tài khoản, trạng thái hoạt động và thông tin liên hệ.</p>
+            <span className="ad-dash-card__meta">
+              {customerCount == null ? 'Đang tải…' : `${customerCount} khách hàng`}
+            </span>
+          </Link>
+
+          <Link to="/admin/slides" className="ad-dash-card">
+            <span className="ad-dash-card__icon ad-dash-card__icon--violet" aria-hidden>
+              <FiSliders size={22} />
+            </span>
+            <h3 className="ad-dash-card__title">Slides</h3>
+            <p className="ad-dash-card__desc">Quản trị banner trang chủ (ảnh, link, bật/tắt, sắp xếp).</p>
+            <span className="ad-dash-card__meta">
+              {slideCount == null ? 'Đang tải…' : `${slideCount} slide`}
+            </span>
+          </Link>
+
+          <Link to="/admin/reviews" className="ad-dash-card">
+            <span className="ad-dash-card__icon ad-dash-card__icon--amber" aria-hidden>
+              <FiStar size={22} />
+            </span>
+            <h3 className="ad-dash-card__title">Đánh giá</h3>
+            <p className="ad-dash-card__desc">Duyệt/ẩn đánh giá sản phẩm hiển thị trên client-customer.</p>
+            <span className="ad-dash-card__meta">
+              {reviewCount == null ? 'Đang tải…' : `${reviewCount} đánh giá`}
+            </span>
+          </Link>
+
+          <Link to="/admin/settings" className="ad-dash-card">
+            <span className="ad-dash-card__icon ad-dash-card__icon--blue" aria-hidden>
+              <FiSettings size={22} />
+            </span>
+            <h3 className="ad-dash-card__title">Giao diện</h3>
+            <p className="ad-dash-card__desc">Cấu hình ảnh nền đăng nhập/đăng ký và thiết lập giao diện.</p>
+            <span className="ad-dash-card__meta">Cập nhật nhanh</span>
+          </Link>
         </div>
       </div>
     );

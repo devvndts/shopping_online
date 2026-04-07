@@ -47,6 +47,36 @@ class AdminSidebar extends Component {
             </span>
             Sản phẩm
           </NavLink>
+          <NavLink
+            to="/admin/reviews"
+            className={linkClass}
+            onClick={onNavigate}
+          >
+            <span className="ad-nav__icon" aria-hidden>
+              ★
+            </span>
+            Đánh giá
+          </NavLink>
+          <NavLink
+            to="/admin/settings"
+            className={linkClass}
+            onClick={onNavigate}
+          >
+            <span className="ad-nav__icon" aria-hidden>
+              ⚙
+            </span>
+            Giao diện
+          </NavLink>
+          <NavLink
+            to="/admin/slides"
+            className={linkClass}
+            onClick={onNavigate}
+          >
+            <span className="ad-nav__icon" aria-hidden>
+              ◧
+            </span>
+            Slides
+          </NavLink>
         </nav>
         <div className="ad-sidebar__section">Bán hàng</div>
         <nav className="ad-sidebar__nav">

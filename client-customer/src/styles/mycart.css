@@ -355,11 +355,6 @@
     padding: 8px 10px;
   }
 }
-
-.cc-cart__line {
-  display: grid;
-  
-}
 /* Cột tóm tắt */
 .cc-cart__summary {
   position: sticky;

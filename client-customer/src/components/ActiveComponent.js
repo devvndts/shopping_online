@@ -13,51 +13,55 @@ class Active extends Component {
 
   render() {
     return (
-      <div className="align-center">
-        <h2 className="text-center">ACTIVE ACCOUNT</h2>
+      <div className="cc-auth align-center cc-home__section">
+        <div className="cc-section-shell cc-auth__shell">
+          <header className="cc-auth__head">
+            <h1 className="cc-auth__title">Kích hoạt tài khoản</h1>
+            <p className="cc-auth__subtitle">
+              Nhập mã ID và token đã được gửi qua email để hoàn tất đăng ký.
+            </p>
+          </header>
 
-        <form>
-          <table className="align-center">
-            <tbody>
-              <tr>
-                <td>ID</td>
-                <td>
-                  <input
-                    type="text"
-                    value={this.state.txtID}
-                    onChange={(e) => {
-                      this.setState({ txtID: e.target.value });
-                    }}
-                  />
-                </td>
-              </tr>
+          <form className="cc-auth__form" onSubmit={(e) => this.btnActiveClick(e)}>
+            <div className="cc-auth__grid">
+              <div className="cc-auth__field cc-auth__field--full">
+                <label className="cc-auth__label" htmlFor="cc-active-id">
+                  ID
+                </label>
+                <input
+                  id="cc-active-id"
+                  className="cc-auth__input"
+                  type="text"
+                  placeholder="Dán ID của bạn"
+                  value={this.state.txtID}
+                  onChange={(e) => {
+                    this.setState({ txtID: e.target.value });
+                  }}
+                />
+              </div>
 
-              <tr>
-                <td>Token</td>
-                <td>
-                  <input
-                    type="text"
-                    value={this.state.txtToken}
-                    onChange={(e) => {
-                      this.setState({ txtToken: e.target.value });
-                    }}
-                  />
-                </td>
-              </tr>
+              <div className="cc-auth__field cc-auth__field--full">
+                <label className="cc-auth__label" htmlFor="cc-active-token">
+                  Token
+                </label>
+                <input
+                  id="cc-active-token"
+                  className="cc-auth__input"
+                  type="text"
+                  placeholder="Dán token kích hoạt"
+                  value={this.state.txtToken}
+                  onChange={(e) => {
+                    this.setState({ txtToken: e.target.value });
+                  }}
+                />
+              </div>
+            </div>
 
-              <tr>
-                <td></td>
-                <td>
-                  <input
-                    type="submit"
-                    value="ACTIVE"
-                    onClick={(e) => this.btnActiveClick(e)}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </form>
+            <button className="cc-auth__submit" type="submit">
+              Kích hoạt
+            </button>
+          </form>
+        </div>
       </div>
     );
   }

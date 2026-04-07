@@ -4,8 +4,9 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+// Slide/Auth background use base64 images; allow larger payloads (MongoDB doc limit ~16MB).
+app.use(bodyParser.json({ limit: '25mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '25mb' }));
 
 app.get('/hello', (req, res) => {
   res.json({ message: 'Hello from server!' });

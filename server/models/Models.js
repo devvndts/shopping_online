@@ -38,6 +38,7 @@ const ProductSchema = mongoose.Schema(
     name: String,
     price: Number,
     image: String,
+    description: String,
     cdate: Number,
     category: CategorySchema,
   },
@@ -67,12 +68,56 @@ const OrderSchema = mongoose.Schema(
   { versionKey: false }
 );
 
+const SettingSchema = mongoose.Schema(
+  {
+    _id: mongoose.Schema.Types.ObjectId,
+    key: String,
+    mime: String,
+    data: String,
+    updatedAt: Number,
+  },
+  { versionKey: false }
+);
+
+const SlideSchema = mongoose.Schema(
+  {
+    _id: mongoose.Schema.Types.ObjectId,
+    title: String,
+    subtitle: String,
+    href: String,
+    imageMime: String,
+    imageData: String,
+    active: Number,
+    sort: Number,
+    updatedAt: Number,
+  },
+  { versionKey: false }
+);
+
+const ReviewSchema = mongoose.Schema(
+  {
+    _id: mongoose.Schema.Types.ObjectId,
+    productId: String,
+    productName: String,
+    author: String,
+    stars: Number,
+    content: String,
+    active: Number,
+    cdate: Number,
+    updatedAt: Number,
+  },
+  { versionKey: false }
+);
+
 // Models
 const Admin = mongoose.model('Admin', AdminSchema);
 const Category = mongoose.model('Category', CategorySchema);
 const Customer = mongoose.model('Customer', CustomerSchema);
 const Product = mongoose.model('Product', ProductSchema);
 const Order = mongoose.model('Order', OrderSchema);
+const Setting = mongoose.model('Setting', SettingSchema);
+const Slide = mongoose.model('Slide', SlideSchema);
+const Review = mongoose.model('Review', ReviewSchema);
 
 module.exports = {
   Admin,
@@ -80,6 +125,9 @@ module.exports = {
   Customer,
   Product,
   Order,
+  Setting,
+  Slide,
+  Review,
 };
 
 

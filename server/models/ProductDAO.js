@@ -33,6 +33,7 @@ const ProductDAO = {
       name: product.name,
       price: product.price,
       image: product.image,
+      description: product.description || '',
       category: product.category,
     };
 
@@ -98,6 +99,14 @@ const ProductDAO = {
     const query = { name: { $regex: new RegExp(keyword, 'i') } };
     const products = await Models.Product.find(query).exec();
     return products;
+  }
+  ,
+  async selectAllMinimal() {
+    const rows = await Models.Product.find({})
+      .select({ _id: 1, name: 1 })
+      .lean()
+      .exec();
+    return rows || [];
   }
 };
 
