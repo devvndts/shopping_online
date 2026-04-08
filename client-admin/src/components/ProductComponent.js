@@ -77,7 +77,7 @@ class Product extends Component {
       <div className="ad-page">
         <h1 className="ad-page__title">Sản phẩm</h1>
         <p className="ad-page__lead">
-          4 sản phẩm / trang. Nhấn dòng để sửa trong hộp thoại, hoặc &quot;Thêm
+          10 sản phẩm / trang. Nhấn dòng để sửa trong hộp thoại, hoặc &quot;Thêm
           mới&quot;.
         </p>
 
@@ -97,13 +97,13 @@ class Product extends Component {
               <table className="ad-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
+                    <th>Ảnh</th>
                     <th>Tên</th>
                     <th>Brand</th>
                     <th>Giá</th>
                     <th>Ngày tạo</th>
                     <th>Danh mục</th>
-                    <th>Ảnh</th>
+                    <th>Slug / Link</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,8 +117,16 @@ class Product extends Component {
                       }
                       onClick={() => this.openEditModal(item)}
                     >
-                      <td className="ad-table__id" title={item._id}>
-                        {item._id}
+                      <td>
+                        {item.image ? (
+                          <img
+                            className="ad-table__thumb"
+                            src={productImageSrc(item.image)}
+                            alt=""
+                          />
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td>{item.name}</td>
                       <td>{item.brand || '—'}</td>
@@ -151,17 +159,6 @@ class Product extends Component {
                             </a>
                           </div>
                         </div>
-                      </td>
-                      <td>
-                        {item.image ? (
-                          <img
-                            className="ad-table__thumb"
-                            src={productImageSrc(item.image)}
-                            alt=""
-                          />
-                        ) : (
-                          '—'
-                        )}
                       </td>
                     </tr>
                   ))}

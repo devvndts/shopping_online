@@ -4,9 +4,7 @@ import { formatVnd } from '../utils/formatVnd';
 import { productImageSrc } from '../utils/productImageSrc';
 import { productPath } from '../utils/productPath';
 
-function ProductCard({ item, badge, showCategoryMeta }) {
-  const catName =
-    item.category && item.category.name ? item.category.name : '';
+function ProductCard({ item, badge, showCategoryMeta, animIndex }) {
   let badgeClass = '';
   let badgeLabel = '';
   if (badge === 'new') {
@@ -19,8 +17,14 @@ function ProductCard({ item, badge, showCategoryMeta }) {
     badgeClass = 'cc-product-card__badge';
     badgeLabel = badge;
   }
+
+  const style =
+    animIndex != null
+      ? { '--cc-card-i': Number(animIndex) || 0 }
+      : undefined;
+
   return (
-    <div className="cc-product-card">
+    <div className="cc-product-card" style={style}>
       {badge ? <span className={badgeClass}>{badgeLabel}</span> : null}
       <Link to={productPath(item)} className="cc-product-card__img-wrap">
         <img
@@ -33,9 +37,6 @@ function ProductCard({ item, badge, showCategoryMeta }) {
         <h3 className="cc-product-card__name">{item.name}</h3>
         {item.brand ? (
           <p className="cc-product-card__brand">{item.brand}</p>
-        ) : null}
-        {showCategoryMeta && catName ? (
-          <p className="cc-product-card__meta">{catName}</p>
         ) : null}
         <p className="cc-product-card__price">{formatVnd(item.price)}</p>
         <Link to={productPath(item)} className="cc-product-card__btn">

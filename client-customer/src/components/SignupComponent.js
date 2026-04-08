@@ -18,7 +18,16 @@ class Signup extends Component {
       formError: '',
       showPassword: false,
       showPassword2: false,
-      heroBg: null
+      heroBg: null,
+
+      // OTP modal
+      otpOpen: false,
+      otpCustomerId: '',
+      otpEmail: '',
+      otpValue: '',
+      otpSubmitting: false,
+      otpResendSubmitting: false,
+      otpResendWaitMs: 0,
     };
   }
 
@@ -85,28 +94,34 @@ class Signup extends Component {
         }
       : undefined;
 
+    const resendDisabled =
+      this.state.otpResendSubmitting ||
+      this.state.otpSubmitting ||
+      (Number(this.state.otpResendWaitMs) || 0) > 0;
+
     return (
-      <div className="cc-auth2 align-center cc-home__section">
-        <div className="cc-auth2__shell">
-          <div className="cc-auth2__grid">
-            <section className="cc-auth2__hero" aria-label="Giới thiệu" style={heroBgStyle}>
-              <h2 className="cc-auth2__hero-title">Tạo tài khoản nhanh.</h2>
-              <p className="cc-auth2__hero-subtitle">
-                Lưu thông tin giao hàng, theo dõi trạng thái đơn và nhận ưu đãi thành viên.
-              </p>
-            </section>
+      <>
+        <div className="cc-auth2 align-center cc-home__section">
+          <div className="cc-auth2__shell">
+            <div className="cc-auth2__grid">
+              <section className="cc-auth2__hero" aria-label="Giới thiệu" style={heroBgStyle}>
+                <h2 className="cc-auth2__hero-title">Tạo tài khoản nhanh.</h2>
+                <p className="cc-auth2__hero-subtitle">
+                  Lưu thông tin giao hàng, theo dõi trạng thái đơn và nhận ưu đãi thành viên.
+                </p>
+              </section>
 
-            <section className="cc-auth2__panel" aria-label="Đăng ký">
-              <nav className="cc-auth2__toggle" aria-label="Chuyển trang">
-                <Link to="/signup" aria-current="page">
-                  Đăng ký
-                </Link>
-                <Link to="/login">Đăng nhập</Link>
-              </nav>
+              <section className="cc-auth2__panel" aria-label="Đăng ký">
+                <nav className="cc-auth2__toggle" aria-label="Chuyển trang">
+                  <Link to="/signup" aria-current="page">
+                    Đăng ký
+                  </Link>
+                  <Link to="/login">Đăng nhập</Link>
+                </nav>
 
-              <h1 className="cc-auth2__title">Tạo tài khoản</h1>
+                <h1 className="cc-auth2__title">Tạo tài khoản</h1>
 
-              <form className="cc-auth2__form" onSubmit={(e) => this.btnSignupClick(e)}>
+                <form className="cc-auth2__form" onSubmit={(e) => this.btnSignupClick(e)}>
                 <div className="cc-auth2__row2">
                   <div className="cc-auth2__field">
                     <input
@@ -222,11 +237,80 @@ class Signup extends Component {
                 <p className="cc-auth2__foot">
                   Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
                 </p>
-              </form>
-            </section>
+                </form>
+              </section>
+            </div>
           </div>
         </div>
-      </div>
+
+        {this.state.otpOpen ? (
+          <div className="cc-modal" role="dialog" aria-modal="true" aria-labelledby="cc-otp-title">
+            <button
+              type="button"
+              className="cc-modal__backdrop"
+              aria-label="Đóng"
+              onClick={this.closeOtp}
+            />
+            <div className="cc-modal__card" style={{ width: 'min(560px, 100%)' }}>
+              <div className="cc-modal__head">
+                <div>
+                  <h2 className="cc-modal__title" id="cc-otp-title">
+                    Nhập OTP để kích hoạt
+                  </h2>
+                  <p className="cc-modal__subtitle">
+                    Mã OTP gồm 6 chữ số đã gửi tới email{' '}
+                    <b>{this.state.otpEmail || 'của bạn'}</b>.
+                  </p>
+                </div>
+                <button type="button" className="cc-modal__close" onClick={this.closeOtp} aria-label="Đóng">
+                  ×
+                </button>
+              </div>
+              <div className="cc-modal__body css-otp-signup">
+                <form onSubmit={this.submitOtp}>
+                  <div className="cc-auth2__field">
+                    <input
+                      className="cc-auth2__input"
+                      type="number"
+                      placeholder="Nhập 6 chữ số (VD: 123456)"
+                      value={this.state.otpValue}
+                      onChange={(e) => {
+                        const v = String(e.target.value || '').replace(/\\D/g, '').slice(0, 6);
+                        this.setState({ otpValue: v });
+                      }}
+                      autoFocus
+                    />
+                  </div>
+
+                  <button className="cc-auth2__cta" type="submit" disabled={this.state.otpSubmitting}>
+                    {this.state.otpSubmitting ? 'Đang xác minh…' : 'Xác minh OTP'}
+                  </button>
+
+                  <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="cc-product-card__btn"
+                      style={{ width: 'auto', padding: '10px 14px', background: 'transparent', color: 'var(--cc-blue-accent)', border: '1px solid rgba(37, 99, 235, 0.35)' }}
+                      onClick={this.resendOtp}
+                      disabled={resendDisabled}
+                    >
+                      {this.state.otpResendWaitMs > 0
+                        ? `Gửi lại mã (${Math.ceil(this.state.otpResendWaitMs / 1000)}s)`
+                        : this.state.otpResendSubmitting
+                          ? 'Đang gửi…'
+                          : 'Gửi lại mã'}
+                    </button>
+
+                    <Link to="/login" className="cc-product-card__btn" style={{ width: 'auto', padding: '10px 14px' }}>
+                      Đăng nhập
+                    </Link>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </>
     );
   }
 
@@ -265,6 +349,19 @@ class Signup extends Component {
       .then((res) => {
         const result = res.data;
         if (result && result.success === true) {
+          // OTP flow: mở modal để nhập OTP
+          if (result.requiresOtp && result.customerId) {
+            notifySuccess(result.message || 'Vui lòng kiểm tra email để lấy OTP.');
+            this.setState({
+              otpOpen: true,
+              otpCustomerId: String(result.customerId || ''),
+              otpEmail: (account && account.email) || '',
+              otpValue: '',
+              otpResendWaitMs: 0,
+            });
+            return;
+          }
+
           notifySuccess(result.message || 'Đăng ký thành công.');
           this.setState({
             txtUsername: '',
@@ -280,8 +377,10 @@ class Signup extends Component {
           notifyError(msg);
         }
       })
-      .catch(() => {
-        const msg = 'Không thể kết nối máy chủ. Vui lòng thử lại.';
+      .catch((err) => {
+        const msg =
+          (err && err.response && err.response.data && err.response.data.message) ||
+          'Không thể kết nối máy chủ. Vui lòng thử lại.';
         this.setState({ formError: msg });
         notifyError(msg);
       })
@@ -290,6 +389,88 @@ class Signup extends Component {
       });
 
   }
+
+  closeOtp = () => {
+    if (this.state.otpSubmitting || this.state.otpResendSubmitting) return;
+    this.setState({ otpOpen: false, otpValue: '' });
+  };
+
+  submitOtp = (e) => {
+    e.preventDefault();
+    if (this.state.otpSubmitting) return;
+    const otp = (this.state.otpValue || '').trim();
+    if (!/^\d{6}$/.test(otp)) {
+      notifyWarning('Vui lòng nhập OTP gồm 6 chữ số.');
+      return;
+    }
+    const id = (this.state.otpCustomerId || '').trim();
+    if (!id) {
+      notifyError('Thiếu thông tin tài khoản. Vui lòng đăng ký lại.');
+      return;
+    }
+    this.setState({ otpSubmitting: true });
+    axios
+      .post('/api/customer/verify-otp', { id, otp })
+      .then((res) => {
+        const r = res.data || {};
+        if (r.success) {
+          notifySuccess(r.message || 'Kích hoạt thành công. Bạn có thể đăng nhập.');
+          this.setState({
+            otpOpen: false,
+            otpValue: '',
+            otpCustomerId: '',
+            otpEmail: '',
+            txtUsername: '',
+            txtPassword: '',
+            txtPassword2: '',
+            txtName: '',
+            txtPhone: '',
+            txtEmail: ''
+          });
+        } else {
+          notifyError(r.message || 'OTP không đúng hoặc đã hết hạn.');
+        }
+      })
+      .catch((err) => {
+        const msg =
+          (err && err.response && err.response.data && err.response.data.message) ||
+          'Không thể kết nối máy chủ. Vui lòng thử lại.';
+        notifyError(msg);
+      })
+      .finally(() => this.setState({ otpSubmitting: false }));
+  };
+
+  resendOtp = () => {
+    if (this.state.otpResendSubmitting) return;
+    const id = (this.state.otpCustomerId || '').trim();
+    const email = (this.state.otpEmail || '').trim();
+    if (!id && !email) return;
+
+    this.setState({ otpResendSubmitting: true });
+    axios
+      .post('/api/customer/resend-otp', { id, email })
+      .then((res) => {
+        const r = res.data || {};
+        if (r.success) {
+          notifySuccess(r.message || 'Đã gửi lại OTP.');
+        } else {
+          notifyError(r.message || 'Không gửi lại được OTP.');
+        }
+      })
+      .catch((err) => {
+        const data = err && err.response && err.response.data;
+        if (err && err.response && err.response.status === 429 && data && data.waitMs != null) {
+          const wait = Number(data.waitMs) || 0;
+          this.setState({ otpResendWaitMs: wait });
+          notifyWarning(data.message || 'Vui lòng chờ trước khi gửi lại OTP.');
+          return;
+        }
+        const msg =
+          (data && data.message) || 'Không thể kết nối máy chủ. Vui lòng thử lại.';
+        notifyError(msg);
+      })
+      .finally(() => this.setState({ otpResendSubmitting: false }));
+  };
 
 }
 

@@ -12,6 +12,7 @@ import Order from "./OrderComponent";
 import Settings from "./SettingsComponent";
 import Slide from "./SlideComponent";
 import Review from "./ReviewComponent";
+import Promo from "./PromoComponent";
 
 class Main extends Component {
   static contextType = MyContext;
@@ -76,6 +77,7 @@ class Main extends Component {
                 <Route path="/admin/settings" element={<Settings />} />
                 <Route path="/admin/slides" element={<Slide />} />
                 <Route path="/admin/reviews" element={<Review />} />
+                <Route path="/admin/promos" element={<Promo />} />
               </Routes>
             </div>
           </main>

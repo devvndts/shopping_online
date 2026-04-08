@@ -2,9 +2,47 @@ body {
   margin: 0;
   font-family: var(--cc-font);
 
-  background: #fff;
+  background: var(--cc-page-bg);
   background-attachment: fixed;
   color: var(--cc-black);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--cc-page-grid);
+  background-size: 26px 26px;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Motion defaults: mượt, nhẹ, không lòe loẹt */
+:root {
+  --cc-ease-out: cubic-bezier(0.22, 0.72, 0, 1);
+  --cc-ease-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 *,

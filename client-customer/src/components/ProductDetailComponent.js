@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { A11y, Keyboard, Navigation, Pagination } from 'swiper/modules';
+import { A11y, Keyboard, Mousewheel, Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
@@ -15,6 +15,7 @@ import { categoryPath } from '../utils/categoryPath';
 import { productImageSrc } from '../utils/productImageSrc';
 import { productGallerySrcs } from '../utils/productGallerySrcs';
 import ProductCard from './ProductCard';
+import { FiCheckCircle, FiZap, FiCreditCard } from 'react-icons/fi';
 
 class ProductDetail extends Component {
   static contextType = MyContext;
@@ -35,8 +36,21 @@ class ProductDetail extends Component {
       reviewSubmitting: false,
       descExpanded: false,
       pdpSlide: 0,
+      pdpThumbSpvDesktop: 6,
     };
     this._pdpSwiper = null;
+    this._pdpThumbSwiper = null;
+    this._onResize = null;
+  }
+
+  calcPdpThumbSpvDesktop() {
+    try {
+      const h = window.innerHeight || 800;
+      // Màn hình thấp (ví dụ 400px) → chỉ 3 thumb cho gọn
+      return h <= 440 ? 3 : 6;
+    } catch {
+      return 6;
+    }
   }
 
   clampQty(n) {
@@ -143,82 +157,123 @@ class ProductDetail extends Component {
             </div>
 
             <div className="cc-pdp__info">
-              {catId ? (
-                <p className="cc-pdp__cat">
-                  <Link
-                    to={categoryPath(cat)}
-                    className="cc-pdp__cat-link"
+              <div className="cc-pdp__buybox" aria-label="Khu vực mua hàng">
+                <div className="cc-pdp__buybox-top">
+                  {catId ? (
+                    <p className="cc-pdp__cat">
+                      <Link to={categoryPath(cat)} className="cc-pdp__cat-link">
+                        {catName}
+                      </Link>
+                    </p>
+                  ) : null}
+
+                  <h1 className="cc-pdp__title">{prod.name}</h1>
+
+                  <div className="cc-pdp__subhead">
+                    {prod.brand ? <p className="cc-pdp__brand">{prod.brand}</p> : null}
+                    {reviews.length ? (
+                      <button
+                        type="button"
+                        className="cc-pdp__rating-link"
+                        onClick={() => this.setState({ tab: 'reviews' })}
+                        aria-label={`Xem đánh giá: ${avgStars}/5 từ ${reviews.length} lượt`}
+                      >
+                        <span className="cc-stars" aria-hidden="true">
+                          {this.renderStars(avgStars)}
+                        </span>
+                        <span className="cc-pdp__rating-link-text">
+                          {avgStars}/5 · {reviews.length}
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="cc-pdp__rating-link cc-pdp__rating-link--muted">
+                        Chưa có đánh giá
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="cc-pdp__price">
+                    {formatVnd(prod.price)}
+                    <span className="cc-pdp__price-note">
+                      Giá hiển thị là giá bán lẻ; khuyến mãi (nếu có) áp dụng khi thanh toán.
+                    </span>
+                  </p>
+                </div>
+
+                <div className="cc-pdp__perks" aria-label="Cam kết & tiện ích">
+                  <div className="cc-pdp__perk">
+                    <span className="cc-pdp__perk-ico" aria-hidden="true">
+                      <FiCheckCircle />
+                    </span>
+                    <span className="cc-pdp__perk-text">Đổi trả linh hoạt nếu sản phẩm lỗi</span>
+                  </div>
+                  <div className="cc-pdp__perk">
+                    <span className="cc-pdp__perk-ico" aria-hidden="true">
+                      <FiZap />
+                    </span>
+                    <span className="cc-pdp__perk-text">Xử lý đơn nhanh, hỗ trợ tận tình</span>
+                  </div>
+                  <div className="cc-pdp__perk">
+                    <span className="cc-pdp__perk-ico" aria-hidden="true">
+                      <FiCreditCard />
+                    </span>
+                    <span className="cc-pdp__perk-text">Thanh toán COD hoặc Chuyển khoản</span>
+                  </div>
+                </div>
+
+                <div className="cc-pdp__meta-block">
+                  <div className="cc-pdp__meta-row">
+                    <span className="cc-pdp__meta-label">Danh mục</span>
+                    <span className="cc-pdp__meta-value">{catName}</span>
+                  </div>
+                </div>
+
+                <div className="cc-pdp__qty">
+                  <label className="cc-pdp__qty-label" htmlFor="cc-pdp-qty">
+                    Số lượng
+                  </label>
+                  <div className="cc-pdp__qty-control">
+                    <button
+                      type="button"
+                      className="cc-pdp__qty-btn"
+                      aria-label="Giảm số lượng"
+                      onClick={() => this.qtyDelta(-1)}
+                    >
+                      −
+                    </button>
+                    <input
+                      id="cc-pdp-qty"
+                      className="cc-pdp__qty-input"
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={this.state.txtQuantity}
+                      onChange={(e) => this.onQtyInputChange(e)}
+                      onBlur={() => this.onQtyInputBlur()}
+                    />
+                    <button
+                      type="button"
+                      className="cc-pdp__qty-btn"
+                      aria-label="Tăng số lượng"
+                      onClick={() => this.qtyDelta(1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="cc-pdp__actions">
+                  <button
+                    type="button"
+                    className="cc-pdp__add"
+                    onClick={(e) => this.btnAdd2CartClick(e)}
                   >
-                    {catName}
+                    Thêm vào giỏ hàng
+                  </button>
+                  <Link to="/mycart" className="cc-pdp__to-cart">
+                    Xem giỏ hàng
                   </Link>
-                </p>
-              ) : null}
-
-              <h1 className="cc-pdp__title">{prod.name}</h1>
-              {prod.brand ? (
-                <p className="cc-pdp__brand">{prod.brand}</p>
-              ) : null}
-
-              <p className="cc-pdp__price">
-                {formatVnd(prod.price)}
-                <span className="cc-pdp__price-note">
-                  Giá hiển thị là giá bán lẻ; khuyến mãi (nếu có) áp dụng khi
-                  thanh toán.
-                </span>
-              </p>
-
-              <div className="cc-pdp__meta-block">
-                <div className="cc-pdp__meta-row">
-                  <span className="cc-pdp__meta-label">Danh mục</span>
-                  <span className="cc-pdp__meta-value">{catName}</span>
                 </div>
-              </div>
-
-              <div>
-                <label className="cc-pdp__qty-label" htmlFor="cc-pdp-qty">
-                  Số lượng
-                </label>
-                <div className="cc-pdp__qty-control">
-                  <button
-                    type="button"
-                    className="cc-pdp__qty-btn"
-                    aria-label="Giảm số lượng"
-                    onClick={() => this.qtyDelta(-1)}
-                  >
-                    −
-                  </button>
-                  <input
-                    id="cc-pdp-qty"
-                    className="cc-pdp__qty-input"
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={this.state.txtQuantity}
-                    onChange={(e) => this.onQtyInputChange(e)}
-                    onBlur={() => this.onQtyInputBlur()}
-                  />
-                  <button
-                    type="button"
-                    className="cc-pdp__qty-btn"
-                    aria-label="Tăng số lượng"
-                    onClick={() => this.qtyDelta(1)}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div className="cc-pdp__actions">
-                <button
-                  type="button"
-                  className="cc-pdp__add"
-                  onClick={(e) => this.btnAdd2CartClick(e)}
-                >
-                  Thêm vào giỏ hàng
-                </button>
-                <Link to="/mycart" className="cc-pdp__to-cart">
-                  Xem giỏ hàng
-                </Link>
               </div>
             </div>
           </div>
@@ -338,59 +393,83 @@ class ProductDetail extends Component {
 
     return (
       <div className="cc-pdp__gallery-inner">
-        <Swiper
-          key={
-            String(prod._id || '') +
-            '-' +
-            gallerySrcs.map((s) => s.slice(-24)).join('.')
-          }
-          modules={[Pagination, Navigation, Keyboard, A11y]}
-          spaceBetween={12}
-          slidesPerView={1}
-          pagination={{ clickable: true, dynamicBullets: true }}
-          navigation
-          keyboard={{ enabled: true }}
-          className="cc-pdp__swiper"
-          onSwiper={(sw) => {
-            this._pdpSwiper = sw;
-          }}
-          onSlideChange={(sw) => this.setState({ pdpSlide: sw.activeIndex })}
-        >
-          {gallerySrcs.map((src, i) => (
-            <SwiperSlide key={`${src}-${i}`}>
-              <div className="cc-pdp__slide-frame">
-                <img
-                  className="cc-pdp__img"
-                  src={src}
-                  alt={`${prod.name} — ảnh ${i + 1}/${gallerySrcs.length}`}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                />
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
-        <div className="cc-pdp__thumbs-wrap">
-         
-          <div className="cc-pdp__thumbs" role="tablist" aria-label="Chọn ảnh">
-            {gallerySrcs.map((src, i) => (
-              <button
-                key={`thumb-${i}`}
-                type="button"
-                role="tab"
-                aria-selected={this.state.pdpSlide === i ? 'true' : 'false'}
-                aria-label={`Ảnh ${i + 1}`}
-                className={
-                  'cc-pdp__thumb' +
-                  (this.state.pdpSlide === i ? ' cc-pdp__thumb--active' : '')
-                }
-                onClick={() => {
-                  if (this._pdpSwiper) this._pdpSwiper.slideTo(i);
-                  this.setState({ pdpSlide: i });
-                }}
-              >
-                <img src={src} alt="" />
-              </button>
-            ))}
+        <div className="cc-pdp__gallery-layout" aria-label="Bộ sưu tập hình ảnh">
+          <div className="cc-pdp__thumbs-col">
+            <Swiper
+              modules={[Keyboard, Mousewheel, A11y]}
+              className="cc-pdp__thumbs-swiper"
+              spaceBetween={10}
+              slidesPerView={6}
+              mousewheel={{ forceToAxis: true }}
+              keyboard={{ enabled: true }}
+              breakpoints={{
+                900: {
+                  direction: 'vertical',
+                  slidesPerView: this.state.pdpThumbSpvDesktop,
+                },
+              }}
+              onSwiper={(sw) => {
+                this._pdpThumbSwiper = sw;
+              }}
+            >
+              {gallerySrcs.map((src, i) => (
+                <SwiperSlide key={`thumb-${i}`}>
+                  <button
+                    type="button"
+                    aria-pressed={this.state.pdpSlide === i ? 'true' : 'false'}
+                    aria-label={`Ảnh ${i + 1}`}
+                    className={
+                      'cc-pdp__thumb' +
+                      (this.state.pdpSlide === i ? ' cc-pdp__thumb--active' : '')
+                    }
+                    onClick={() => {
+                      if (this._pdpSwiper) this._pdpSwiper.slideTo(i);
+                      this.setState({ pdpSlide: i });
+                      if (this._pdpThumbSwiper) this._pdpThumbSwiper.slideTo(i);
+                    }}
+                  >
+                    <img src={src} alt="" />
+                  </button>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+
+          <div className="cc-pdp__stage-col">
+            <Swiper
+              key={
+                String(prod._id || '') +
+                '-' +
+                gallerySrcs.map((s) => s.slice(-24)).join('.')
+              }
+              modules={[Pagination, Navigation, Keyboard, A11y]}
+              spaceBetween={12}
+              slidesPerView={1}
+              pagination={{ clickable: true, dynamicBullets: true }}
+              navigation
+              keyboard={{ enabled: true }}
+              className="cc-pdp__swiper"
+              onSwiper={(sw) => {
+                this._pdpSwiper = sw;
+              }}
+              onSlideChange={(sw) => {
+                this.setState({ pdpSlide: sw.activeIndex });
+                if (this._pdpThumbSwiper) this._pdpThumbSwiper.slideTo(sw.activeIndex);
+              }}
+            >
+              {gallerySrcs.map((src, i) => (
+                <SwiperSlide key={`${src}-${i}`}>
+                  <div className="cc-pdp__slide-frame">
+                    <img
+                      className="cc-pdp__img"
+                      src={src}
+                      alt={`${prod.name} — ảnh ${i + 1}/${gallerySrcs.length}`}
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                    />
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
           </div>
         </div>
       </div>
@@ -566,6 +645,26 @@ class ProductDetail extends Component {
 
   componentDidMount() {
     this.apiGetProduct(this.props.params.id);
+    const spv = this.calcPdpThumbSpvDesktop();
+    this.setState({ pdpThumbSpvDesktop: spv });
+
+    this._onResize = () => {
+      const next = this.calcPdpThumbSpvDesktop();
+      this.setState((s) => (s.pdpThumbSpvDesktop === next ? null : { pdpThumbSpvDesktop: next }));
+    };
+    try {
+      window.addEventListener('resize', this._onResize);
+    } catch {
+      // ignore
+    }
+  }
+
+  componentWillUnmount() {
+    try {
+      if (this._onResize) window.removeEventListener('resize', this._onResize);
+    } catch {
+      // ignore
+    }
   }
 
   componentDidUpdate(prevProps) {

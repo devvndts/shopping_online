@@ -47,6 +47,9 @@ const CustomerSchema = mongoose.Schema(
     email: String,
     active: Number,
     token: String,
+    otpHash: String,
+    otpExpires: Number,
+    otpLastSentAt: Number,
   },
   { versionKey: false }
 );
@@ -68,9 +71,29 @@ const ProductSchema = mongoose.Schema(
   { versionKey: false }
 );
 
+/**
+ * Snapshot sản phẩm trong đơn hàng.
+ * Không dùng ProductSchema để tránh kéo theo unique index (vd slug) vào Order collection.
+ */
+const OrderProductSnapshotSchema = mongoose.Schema(
+  {
+    _id: mongoose.Schema.Types.ObjectId,
+    name: String,
+    brand: String,
+    slug: { type: String, index: true }, // không unique
+    price: Number,
+    image: String,
+    gallery: { type: [String], default: [] },
+    description: String,
+    cdate: Number,
+    category: ProductCategoryEmbedSchema,
+  },
+  { versionKey: false, _id: false }
+);
+
 const ItemSchema = mongoose.Schema(
   {
-    product: ProductSchema,
+    product: OrderProductSnapshotSchema,
     quantity: Number,
   },
   {
@@ -83,10 +106,36 @@ const OrderSchema = mongoose.Schema(
   {
     _id: mongoose.Schema.Types.ObjectId,
     cdate: Number,
+    subtotal: Number,
+    discount: Number,
     total: Number,
+    promoCode: String,
+    promoSnapshot: Object,
+    shippingAddress: String,
+    paymentMethod: String, // COD | BANK
+    paymentNote: String,
     status: String,
     customer: CustomerSchema,
     items: [ItemSchema],
+  },
+  { versionKey: false }
+);
+
+const PromoSchema = mongoose.Schema(
+  {
+    _id: mongoose.Schema.Types.ObjectId,
+    code: { type: String, index: true, unique: true },
+    name: String,
+    description: String,
+    type: String, // PERCENT | FIXED
+    value: Number, // percent (0-100) or fixed amount
+    minSubtotal: Number,
+    maxDiscount: Number,
+    active: Number,
+    startAt: Number,
+    endAt: Number,
+    createdAt: Number,
+    updatedAt: Number,
   },
   { versionKey: false }
 );
@@ -144,6 +193,7 @@ const Order = mongoose.model('Order', OrderSchema);
 const Setting = mongoose.model('Setting', SettingSchema);
 const Slide = mongoose.model('Slide', SlideSchema);
 const Review = mongoose.model('Review', ReviewSchema);
+const Promo = mongoose.model('Promo', PromoSchema);
 
 module.exports = {
   Admin,
@@ -155,6 +205,7 @@ module.exports = {
   Setting,
   Slide,
   Review,
+  Promo,
 };
 
 

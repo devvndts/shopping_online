@@ -144,6 +144,8 @@ class Order extends Component {
                         <th>Ngày</th>
                         <th>Khách</th>
                         <th>Điện thoại</th>
+                        <th>Thanh toán</th>
+                        <th>Coupon</th>
                         <th>Tổng</th>
                         <th>Trạng thái</th>
                         <th>Dòng</th>
@@ -157,6 +159,13 @@ class Order extends Component {
                           ? item.items.length
                           : 0;
                         const open = expandedId === item._id;
+                        const promoCode =
+                          item && item.promoCode ? String(item.promoCode).trim() : '';
+                        const discount =
+                          item && item.discount != null ? Number(item.discount) : 0;
+                        const subtotal =
+                          item && item.subtotal != null ? Number(item.subtotal) : 0;
+                        const pm = item && item.paymentMethod ? String(item.paymentMethod) : '';
                         return (
                           <React.Fragment key={item._id}>
                             <tr
@@ -172,6 +181,31 @@ class Order extends Component {
                               <td>{this.formatDate(item.cdate)}</td>
                               <td>{cust.name || '—'}</td>
                               <td>{cust.phone || '—'}</td>
+                              <td>
+                                {pm ? (
+                                  <span className="ad-pill" title={pm === 'BANK' ? 'Chuyển khoản' : 'COD'}>
+                                    {pm === 'BANK' ? 'BANK' : 'COD'}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--ad-muted)' }}>—</span>
+                                )}
+                              </td>
+                              <td>
+                                {promoCode ? (
+                                  <span
+                                    className="ad-pill"
+                                    title={
+                                      discount > 0
+                                        ? `Giảm ${formatVnd(discount)}`
+                                        : promoCode
+                                    }
+                                  >
+                                    {promoCode}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--ad-muted)' }}>—</span>
+                                )}
+                              </td>
                               <td>{formatVnd(item.total)}</td>
                               <td>{item.status || '—'}</td>
                               <td>{nLines}</td>
@@ -198,8 +232,62 @@ class Order extends Component {
                             </tr>
                             {open && nLines > 0 ? (
                               <tr className="ad-table__row--active">
-                                <td colSpan={8} style={{ padding: '14px 18px' }}>
+                                <td colSpan={10} style={{ padding: '14px 18px' }}>
                                   <strong>Chi tiết:</strong>
+                                  {item.shippingAddress ? (
+                                    <div style={{ marginTop: 10 }}>
+                                      <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                                        Địa chỉ giao hàng
+                                      </div>
+                                      <div style={{ color: 'var(--ad-muted)', lineHeight: 1.45 }}>
+                                        {item.shippingAddress}
+                                      </div>
+                                    </div>
+                                  ) : null}
+
+                                  {pm ? (
+                                    <div style={{ marginTop: 10 }}>
+                                      <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                                        Phương thức thanh toán
+                                      </div>
+                                      <div style={{ color: 'var(--ad-muted)', lineHeight: 1.45 }}>
+                                        {pm === 'BANK'
+                                          ? 'Chuyển khoản'
+                                          : 'Thanh toán khi nhận hàng (COD)'}
+                                        {pm === 'BANK' && item.paymentNote ? (
+                                          <div style={{ marginTop: 4 }}>
+                                            Ghi chú: {item.paymentNote}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                  {promoCode ? (
+                                    <div
+                                      style={{
+                                        marginTop: 10,
+                                        padding: '12px 14px',
+                                        border: '1px solid var(--ad-border)',
+                                        borderRadius: 12,
+                                        background: 'rgba(59, 130, 246, 0.06)',
+                                      }}
+                                    >
+                                      <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                                        Coupon: {promoCode}
+                                      </div>
+                                      <div style={{ color: 'var(--ad-muted)', fontSize: '0.92rem' }}>
+                                        {subtotal > 0 ? (
+                                          <div>Tạm tính: {formatVnd(subtotal)}</div>
+                                        ) : null}
+                                        {discount > 0 ? (
+                                          <div>Giảm giá: −{formatVnd(discount)}</div>
+                                        ) : null}
+                                        <div style={{ marginTop: 4, fontWeight: 800, color: 'var(--ad-text)' }}>
+                                          Tổng: {formatVnd(item.total)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : null}
                                   <ul
                                     style={{
                                       margin: '10px 0 0',

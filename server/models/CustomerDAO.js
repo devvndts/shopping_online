@@ -69,6 +69,55 @@ const CustomerDAO = {
 
     return result;
   },
+
+  async setOtpForInactiveCustomer(_id, otpHash, otpExpires, otpLastSentAt) {
+    const query = { _id: _id, active: 0 };
+    const update = { otpHash, otpExpires, otpLastSentAt };
+    const result = await Models.Customer.findOneAndUpdate(query, update, {
+      new: true,
+      lean: true,
+    }).exec();
+    return result ? toSafeLean(result) : null;
+  },
+
+  async verifyOtpAndActivate(_id, otpHash, nowMs) {
+    const query = {
+      _id: _id,
+      active: 0,
+      otpHash: otpHash,
+      otpExpires: { $gt: nowMs },
+    };
+    const update = {
+      active: 1,
+      otpHash: '',
+      otpExpires: 0,
+      otpLastSentAt: 0,
+    };
+    const result = await Models.Customer.findOneAndUpdate(query, update, {
+      new: true,
+      lean: true,
+    }).exec();
+    return result ? toSafeLean(result) : null;
+  },
+
+  async selectInactiveByIdOrEmail(id, email) {
+    const q = { active: 0 };
+    if (id) q._id = id;
+    if (email) q.email = String(email).trim();
+    const row = await Models.Customer.findOne(q).lean().exec();
+    return row || null;
+  },
+
+  async canResendOtp(_id, cooldownMs, nowMs) {
+    const row = await Models.Customer.findById(_id)
+      .select({ active: 1, otpLastSentAt: 1 })
+      .lean()
+      .exec();
+    if (!row || row.active !== 0) return { ok: false, waitMs: cooldownMs };
+    const last = Number(row.otpLastSentAt) || 0;
+    const waitMs = Math.max(0, cooldownMs - (nowMs - last));
+    return { ok: waitMs <= 0, waitMs };
+  },
   async selectByUsernameAndPassword(username, password) {
     const query = { username: username, password: password };
     const customer = await Models.Customer.findOne(query);

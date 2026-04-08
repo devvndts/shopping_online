@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
 import ProductCard from './ProductCard';
+import Reveal from './Reveal';
 import { categoryPath } from '../utils/categoryPath';
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -29,7 +30,12 @@ class Home extends Component {
   render() {
     return (
       <div className="cc-home">
-        <div className="align-center cc-home__section cc-home__section--new">
+        <Reveal
+          as="div"
+          className="align-center cc-home__section cc-home__section--new"
+          index={0}
+          style={{ '--cc-reveal-delay-step': '60ms' }}
+        >
           <div className="cc-section-shell">
             <div className="cc-new-products">
               <div className="cc-new-products__head">
@@ -52,12 +58,13 @@ class Home extends Component {
                 
                   breakpoints={HOME_SWIPER_BREAKPOINTS}
                 >
-                  {this.state.newprods.map((item) => (
+                  {this.state.newprods.map((item, idx) => (
                     <SwiperSlide key={item._id}>
                       <ProductCard
                         item={item}
                         badge="new"
                         showCategoryMeta={true}
+                        animIndex={idx}
                       />
                     </SwiperSlide>
                   ))}
@@ -65,10 +72,15 @@ class Home extends Component {
               ) : null}
             </div>
           </div>
-        </div>
+        </Reveal>
 
         {this.state.categorySections.length > 0 ? (
-          <div className="align-center cc-home__section cc-home__section--category">
+          <Reveal
+            as="div"
+            className="align-center cc-home__section cc-home__section--category"
+            index={1}
+            style={{ '--cc-reveal-delay-step': '60ms' }}
+          >
             <div className="cc-section-shell">
               <h2 className="text-center cc-section-heading cc-category-sections__main-title">
                 Sản phẩm theo danh mục
@@ -77,10 +89,13 @@ class Home extends Component {
                 Chọn nhanh dòng máy phù hợp nhu cầu — gaming, văn phòng hay
                 mỏng nhẹ.
               </p>
-              {this.state.categorySections.map((block) => (
-                <section
+              {this.state.categorySections.map((block, bi) => (
+                <Reveal
+                  as="section"
                   key={block.category._id}
                   className="cc-category-block"
+                  index={bi}
+                  style={{ '--cc-reveal-delay-step': '80ms' }}
                 >
                   <div className="cc-category-block__head">
                     <h3 className="cc-category-block__title">
@@ -94,22 +109,28 @@ class Home extends Component {
                     </Link>
                   </div>
                   <div className="cc-category-grid">
-                    {block.products.slice(0, 8).map((item) => (
+                    {block.products.slice(0, 8).map((item, idx) => (
                       <ProductCard
                         key={item._id}
                         item={item}
                         showCategoryMeta={false}
+                        animIndex={idx}
                       />
                     ))}
                   </div>
-                </section>
+                </Reveal>
               ))}
             </div>
-          </div>
+          </Reveal>
         ) : null}
 
         {this.state.hotprods.length > 0 ? (
-          <div className="align-center cc-home__section cc-home__section--hot">
+          <Reveal
+            as="div"
+            className="align-center cc-home__section cc-home__section--hot"
+            index={2}
+            style={{ '--cc-reveal-delay-step': '60ms' }}
+          >
             <div className="cc-section-shell cc-section-shell--dark">
               <div className="cc-hot-section__head">
                 <h2 className="text-center cc-section-heading cc-section-heading--on-dark">
@@ -129,18 +150,19 @@ class Home extends Component {
                 pagination={{ clickable: true }}
                 breakpoints={HOME_SWIPER_BREAKPOINTS}
               >
-                {this.state.hotprods.map((item) => (
+                {this.state.hotprods.map((item, idx) => (
                   <SwiperSlide key={item._id}>
                     <ProductCard
                       item={item}
                       badge="hot"
                       showCategoryMeta={true}
+                      animIndex={idx}
                     />
                   </SwiperSlide>
                 ))}
               </Swiper>
             </div>
-          </div>
+          </Reveal>
         ) : (
           <div />
         )}

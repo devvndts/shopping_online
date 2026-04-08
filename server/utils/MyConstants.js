@@ -3,9 +3,9 @@ const MyConstants = {
   DB_USER: 'minhcuongdevvndts_db_user',
   DB_PASS: 'a4CRR1lkipy7BKmk',
   DB_DATABASE: 'laptopshop_vlu',
-  
-  EMAIL_USER: 'hoangkha020202@gmail.com',
-  EMAIL_PASS: 'rbulpsxestwgqdrp',
+
+  EMAIL_USER: process.env.EMAIL_USER,
+  EMAIL_PASS: process.env.EMAIL_PASS,
 
   JWT_SECRET: 'abciooiqwe',
   JWT_EXPIRES: '356658435644111',

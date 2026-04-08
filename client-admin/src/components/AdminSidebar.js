@@ -87,6 +87,16 @@ class AdminSidebar extends Component {
             </span>
             Slides
           </NavLink>
+          <NavLink
+            to="/admin/promos"
+            className={linkClass}
+            onClick={onNavigate}
+          >
+            <span className="ad-nav__icon" aria-hidden>
+              %
+            </span>
+            Khuyến mãi
+          </NavLink>
         </nav>
         <div className="ad-sidebar__section">Bán hàng</div>
         <nav className="ad-sidebar__nav">

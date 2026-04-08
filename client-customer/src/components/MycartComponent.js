@@ -15,7 +15,18 @@ class Mycart extends Component {
 
   constructor(props) {
     super(props);
-    this.state = { showCheckoutConfirm: false };
+    this.state = {
+      showCheckoutConfirm: false,
+      promoInput: '',
+      promoApplied: null, // { code, discount, total, promo }
+      promoError: '',
+      promoLoading: false,
+      promoApplicable: [],
+
+      shippingAddress: '',
+      paymentMethod: 'COD',
+      paymentNote: '',
+    };
   }
 
   cartItemCount(lines) {
@@ -54,7 +65,52 @@ class Mycart extends Component {
       this.props.navigate('/login');
       return;
     }
-    this.setState({ showCheckoutConfirm: true });
+    this.setState(
+      { showCheckoutConfirm: true, promoError: '', promoApplied: null },
+      () => this.loadApplicablePromos()
+    );
+  }
+
+  loadApplicablePromos() {
+    const subtotal = CartUtil.getTotal(this.context.mycart);
+    this.setState({ promoLoading: true });
+    axios
+      .post('/api/customer/promos/applicable', { subtotal })
+      .then((res) => {
+        this.setState({ promoApplicable: res.data || [] });
+      })
+      .catch(() => {
+        this.setState({ promoApplicable: [] });
+      })
+      .finally(() => this.setState({ promoLoading: false }));
+  }
+
+  applyPromo(code) {
+    const subtotal = CartUtil.getTotal(this.context.mycart);
+    const c = String(code || '').trim();
+    if (!c) {
+      this.setState({ promoError: 'Vui lòng nhập mã khuyến mãi.' });
+      return;
+    }
+    this.setState({ promoError: '', promoLoading: true });
+    axios
+      .post('/api/customer/promos/validate', { subtotal, code: c })
+      .then((res) => {
+        const r = res.data || {};
+        if (r.success) {
+          this.setState({ promoApplied: r, promoInput: r.code || c });
+          notifySuccess('Đã áp dụng mã ' + (r.code || c));
+        } else {
+          this.setState({ promoApplied: null, promoError: r.message || 'Không áp dụng được mã.' });
+        }
+      })
+      .catch((err) => {
+        const msg =
+          (err && err.response && err.response.data && err.response.data.message) ||
+          'Không áp dụng được mã khuyến mãi.';
+        this.setState({ promoApplied: null, promoError: msg });
+      })
+      .finally(() => this.setState({ promoLoading: false }));
   }
 
   confirmCheckout() {
@@ -62,11 +118,31 @@ class Mycart extends Component {
     const total = CartUtil.getTotal(this.context.mycart);
     const items = this.context.mycart;
     const customer = this.context.customer;
-    this.apiCheckout(total, items, customer);
+    const promoCode =
+      (this.state.promoApplied && this.state.promoApplied.code) ||
+      (this.state.promoInput || '').trim();
+    const shippingAddress = (this.state.shippingAddress || '').trim();
+    const paymentMethod = this.state.paymentMethod || 'COD';
+    const paymentNote = (this.state.paymentNote || '').trim();
+
+    if (!shippingAddress) {
+      notifyWarning('Vui lòng nhập địa chỉ giao hàng.');
+      return;
+    }
+
+    this.apiCheckout(total, items, customer, promoCode, shippingAddress, paymentMethod, paymentNote);
   }
 
-  apiCheckout(total, items, customer) {
-    const body = { total: total, items: items, customer: customer };
+  apiCheckout(total, items, customer, promoCode, shippingAddress, paymentMethod, paymentNote) {
+    const body = {
+      total: total,
+      items: items,
+      customer: customer,
+      promoCode,
+      shippingAddress,
+      paymentMethod,
+      paymentNote,
+    };
     const config = {
       headers: { 'x-access-token': this.context.token }
     };
@@ -75,16 +151,26 @@ class Mycart extends Component {
       .post('/api/customer/checkout', body, config)
       .then((res) => {
         const result = res.data;
-        if (result) {
-          notifySuccess('Đặt hàng thành công!');
+        if (result && result.success) {
+          const emailSent = result.emailSent === true;
+          notifySuccess(
+            emailSent
+              ? 'Đặt hàng thành công! Email xác nhận đã được gửi.'
+              : 'Đặt hàng thành công!'
+          );
           this.context.setMycart([]);
           this.props.navigate('/home');
         } else {
-          notifyError('Thanh toán thất bại. Vui lòng thử lại.');
+          notifyError(
+            (result && result.message) || 'Thanh toán thất bại. Vui lòng thử lại.'
+          );
         }
       })
-      .catch(() => {
-        notifyError('Không thể kết nối máy chủ. Vui lòng thử lại.');
+      .catch((err) => {
+        const msg =
+          (err && err.response && err.response.data && err.response.data.message) ||
+          'Không thể kết nối máy chủ. Vui lòng thử lại.';
+        notifyError(msg);
       });
   }
 
@@ -92,6 +178,10 @@ class Mycart extends Component {
     const lines = this.context.mycart;
     const total = CartUtil.getTotal(lines);
     const itemCount = this.cartItemCount(lines);
+    const applied = this.state.promoApplied;
+    const discount = applied && applied.discount ? Number(applied.discount) : 0;
+    const finalTotal =
+      applied && applied.total != null ? Number(applied.total) : total;
 
     return (
       <>
@@ -263,17 +353,216 @@ class Mycart extends Component {
               aria-labelledby="cc-checkout-title"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 id="cc-checkout-title" className="cc-checkout__title">
-                Xác nhận đặt hàng?
-              </h3>
-              <p className="cc-checkout__text">
-                Bạn sắp hoàn tất đơn với số tiền dưới đây. Vui lòng kiểm tra lại
-                sản phẩm và số lượng trước khi xác nhận.
-              </p>
-              <div className="cc-checkout__total">
-                Tổng thanh toán: {formatVnd(CartUtil.getTotal(lines))}
+              <header className="cc-checkout__head">
+                <div className="cc-checkout__head-text">
+                  <h3 id="cc-checkout-title" className="cc-checkout__title">
+                    Thanh toán
+                  </h3>
+                  <p className="cc-checkout__text">
+                    Xác nhận thông tin giao hàng, chọn phương thức thanh toán và
+                    áp dụng mã khuyến mãi (nếu có).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="cc-checkout__close"
+                  onClick={() => this.setState({ showCheckoutConfirm: false })}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </header>
+
+              <div className="cc-checkout__content">
+                <section className="cc-checkout__section">
+                  <div className="cc-checkout__section-title">Tóm tắt thanh toán</div>
+                  <div className="cc-checkout__total">
+                    <div className="cc-checkout__total-grid">
+                      <div className="cc-checkout__row">
+                        <span>Tạm tính</span>
+                        <b>{formatVnd(total)}</b>
+                      </div>
+                      {discount > 0 ? (
+                        <div className="cc-checkout__row cc-checkout__row--discount">
+                          <span>Giảm giá</span>
+                          <b>−{formatVnd(discount)}</b>
+                        </div>
+                      ) : null}
+                      <div className="cc-checkout__row cc-checkout__row--grand">
+                        <span>Tổng thanh toán</span>
+                        <b>{formatVnd(finalTotal)}</b>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="cc-checkout__section">
+                  <div className="cc-checkout__section-title">Mã khuyến mãi</div>
+                  <div className="cc-checkout__promo-row">
+                    <input
+                      type="text"
+                      value={this.state.promoInput}
+                      onChange={(e) =>
+                        this.setState({ promoInput: e.target.value, promoError: '' })
+                      }
+                      placeholder="Nhập mã (VD: SALE10)"
+                      className="cc-checkout__promo-input"
+                    />
+                    <button
+                      type="button"
+                      className="cc-checkout__btn cc-checkout__btn--primary"
+                      onClick={() => this.applyPromo(this.state.promoInput)}
+                      disabled={this.state.promoLoading}
+                    >
+                      {this.state.promoLoading ? 'Đang áp dụng…' : 'Áp dụng'}
+                    </button>
+                  </div>
+                  {this.state.promoError ? (
+                    <div className="cc-checkout__error">{this.state.promoError}</div>
+                  ) : null}
+
+                  {this.state.promoApplicable && this.state.promoApplicable.length > 0 ? (
+                    <div className="cc-checkout__subsection">
+                      <div className="cc-checkout__subhead">Gợi ý phù hợp</div>
+                      <div className="cc-coupon-grid">
+                        {this.state.promoApplicable.map((p) => {
+                          const title = p.name || p.code;
+                          const desc =
+                            p.description ||
+                            (p.minSubtotal
+                              ? `Áp dụng cho đơn từ ${formatVnd(p.minSubtotal)}`
+                              : 'Áp dụng cho đơn hàng phù hợp.');
+                          const preview =
+                            p.discountPreview && Number(p.discountPreview) > 0
+                              ? `Giảm ${formatVnd(p.discountPreview)}`
+                              : '';
+                          return (
+                            <button
+                              key={p._id}
+                              type="button"
+                              className="cc-coupon"
+                              onClick={() => this.applyPromo(p.code)}
+                              disabled={this.state.promoLoading}
+                              title={p.code}
+                            >
+                              <span className="cc-coupon__icon" aria-hidden>
+                                <svg viewBox="0 0 24 24" fill="none">
+                                  <path
+                                    d="M21 11.5V7a2 2 0 0 0-2-2H5A2 2 0 0 0 3 7v4.5a2.5 2.5 0 0 1 0 5V21a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4.5a2.5 2.5 0 0 1 0-5Z"
+                                    stroke="currentColor"
+                                    strokeWidth="1.6"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M9 9h6M9 13h6M9 17h4"
+                                    stroke="currentColor"
+                                    strokeWidth="1.6"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              </span>
+                              <span className="cc-coupon__body">
+                                <span className="cc-coupon__top">
+                                  <span className="cc-coupon__title">{title}</span>
+                                  <span className="cc-coupon__code">{p.code}</span>
+                                </span>
+                                <span className="cc-coupon__desc">{desc}</span>
+                                {preview ? (
+                                  <span className="cc-coupon__preview">{preview}</span>
+                                ) : null}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+
+                <section className="cc-checkout__section">
+                  <div className="cc-checkout__section-title">Giao hàng</div>
+                  <textarea
+                    value={this.state.shippingAddress}
+                    onChange={(e) =>
+                      this.setState({ shippingAddress: e.target.value })
+                    }
+                    placeholder="VD: 69/89 Đặng Thùy Trâm, P. Bình Lợi Trung, TP.HCM"
+                    rows={3}
+                    className="cc-checkout__textarea"
+                  />
+                </section>
+
+                <section className="cc-checkout__section">
+                  <div className="cc-checkout__section-title">Thanh toán</div>
+                  <div className="cc-checkout__pm">
+                    <label className="cc-checkout__pm-item">
+                      <input
+                        type="radio"
+                        name="pm"
+                        checked={this.state.paymentMethod === 'COD'}
+                        onChange={() => this.setState({ paymentMethod: 'COD' })}
+                      />
+                      <span>
+                        <b>Thanh toán khi nhận hàng (COD)</b>
+                        <div className="cc-checkout__pm-sub">
+                          Trả tiền mặt/QR khi nhận hàng.
+                        </div>
+                      </span>
+                    </label>
+                    <label className="cc-checkout__pm-item">
+                      <input
+                        type="radio"
+                        name="pm"
+                        checked={this.state.paymentMethod === 'BANK'}
+                        onChange={() => this.setState({ paymentMethod: 'BANK' })}
+                      />
+                      <span>
+                        <b>Chuyển khoản</b>
+                        <div className="cc-checkout__pm-sub">
+                          Chuyển khoản trước, admin xác nhận sau.
+                        </div>
+                      </span>
+                    </label>
+                  </div>
+
+                  {this.state.paymentMethod === 'BANK' ? (
+                    <div className="cc-checkout__bank">
+                      <div className="cc-checkout__bank-title">
+                        Thông tin chuyển khoản
+                      </div>
+                      <div className="cc-checkout__bank-body">
+                        <div>
+                          Ngân hàng: <b>Vietcombank</b>
+                        </div>
+                        <div>
+                          Số TK: <b>0123 456 789</b>
+                        </div>
+                        <div>
+                          Chủ TK: <b>VLU Laptop Shop</b>
+                        </div>
+                        <div style={{ marginTop: 6 }}>
+                          Nội dung: <b>SĐT + Mã đơn</b> (sau khi đặt hàng)
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        value={this.state.paymentNote}
+                        onChange={(e) =>
+                          this.setState({ paymentNote: e.target.value })
+                        }
+                        placeholder="Ghi chú / Mã giao dịch (tuỳ chọn)"
+                        className="cc-checkout__input"
+                      />
+                    </div>
+                  ) : null}
+                </section>
               </div>
-              <div className="cc-checkout__actions">
+
+              <footer className="cc-checkout__footer">
+                <div className="cc-checkout__footer-total">
+                  <span>Tổng</span>
+                  <b>{formatVnd(finalTotal)}</b>
+                </div>
                 <button
                   type="button"
                   className="cc-checkout__btn cc-checkout__btn--ghost"
@@ -288,7 +577,7 @@ class Mycart extends Component {
                 >
                   Đặt hàng
                 </button>
-              </div>
+              </footer>
             </div>
           </div>
         )}

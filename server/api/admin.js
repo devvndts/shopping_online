@@ -8,6 +8,7 @@ const AdminDAO = require('../models/AdminDAO');
 const CategoryDAO = require('../models/CategoryDAO');
 const BrandDAO = require('../models/BrandDAO');
 const ProductDAO = require('../models/ProductDAO');
+const PromoDAO = require('../models/PromoDAO');
 const { slugify } = require('../utils/slugify');
 const {
   resolveProductImageForDb,
@@ -153,9 +154,64 @@ router.delete('/brands/:id', JwtUtil.checkToken, async function (req, res) {
   res.json(result);
 });
 
+// ===== Promo codes =====
+router.get('/promos', JwtUtil.checkToken, async function (req, res) {
+  const rows = await PromoDAO.selectAll();
+  res.json(rows);
+});
+
+router.post('/promos', JwtUtil.checkToken, async function (req, res) {
+  const rawCode = req.body.code;
+  const code = PromoDAO.normalizeCode(rawCode);
+  if (!code) {
+    return res.status(400).json({ success: false, message: 'Vui lòng nhập mã (code).' });
+  }
+  const dup = await PromoDAO.selectByCode(code);
+  if (dup) {
+    return res.status(409).json({ success: false, message: 'Mã khuyến mãi đã tồn tại.' });
+  }
+  try {
+    const row = await PromoDAO.insert({
+      ...req.body,
+      code,
+    });
+    res.json(row);
+  } catch (e) {
+    res.status(400).json({ success: false, message: e.message || 'Không tạo được mã.' });
+  }
+});
+
+router.put('/promos/:id', JwtUtil.checkToken, async function (req, res) {
+  const _id = req.params.id;
+  if (!_id) return res.status(400).json({ success: false, message: 'Thiếu id.' });
+  const rawCode = req.body.code;
+  const code = PromoDAO.normalizeCode(rawCode);
+  if (!code) {
+    return res.status(400).json({ success: false, message: 'Vui lòng nhập mã (code).' });
+  }
+  const existing = await PromoDAO.selectByCode(code);
+  if (existing && String(existing._id) !== String(_id)) {
+    return res.status(409).json({ success: false, message: 'Code đã được dùng cho mã khác.' });
+  }
+  try {
+    const row = await PromoDAO.update({ ...req.body, _id, code });
+    res.json(row);
+  } catch (e) {
+    res.status(400).json({ success: false, message: e.message || 'Không cập nhật được mã.' });
+  }
+});
+
+router.delete('/promos/:id', JwtUtil.checkToken, async function (req, res) {
+  const _id = req.params.id;
+  if (!_id) return res.status(400).json({ success: false, message: 'Thiếu id.' });
+  const row = await PromoDAO.delete(_id);
+  if (row) return res.json(row);
+  res.status(404).json({ success: false, message: 'Không tìm thấy mã.' });
+});
+
 router.get('/products', JwtUtil.checkToken, async function (req, res) {
   const noProducts = await ProductDAO.selectByCount();
-  const sizePage = 4;
+  const sizePage = 10;
   const noPages = Math.ceil(noProducts / sizePage);
   var curPage = 1;
   if (req.query.page) curPage = parseInt(req.query.page);
@@ -535,6 +591,89 @@ router.put(
   }
 );
 
+router.get('/settings/site-favicon', JwtUtil.checkToken, async function (req, res) {
+  const row = await SettingDAO.getByKey('siteFavicon');
+  const imageUrl = resolveSettingImageUrlForAdmin(row, 'siteFavicon');
+  res.json({
+    imageUrl: imageUrl || '',
+    updatedAt: (row && row.updatedAt) || 0,
+  });
+});
+
+router.put(
+  '/settings/site-favicon',
+  JwtUtil.checkToken,
+  uploadImageMemory.single('image'),
+  async function (req, res) {
+    try {
+      let imageUrl = (req.body.imageUrl || '').trim();
+      let mime = '';
+      let data = '';
+
+      if (req.file && req.file.buffer && req.file.buffer.length) {
+        if (!/^image\//i.test(req.file.mimetype || '')) {
+          return res.status(400).json({ success: false, message: 'File phải là ảnh.' });
+        }
+        if (isConfigured()) {
+          imageUrl = await uploadImageBuffer(req.file.buffer, req.file.mimetype, 'settings');
+          mime = '';
+          data = '';
+        } else {
+          // Fallback: lưu base64 trong Mongo (legacy proxy URL)
+          imageUrl = '';
+          mime = req.file.mimetype;
+          data = Buffer.from(req.file.buffer).toString('base64');
+        }
+      } else {
+        // URL mode
+        if (!looksLikeHttpUrl(imageUrl)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Vui lòng chọn file ảnh hoặc nhập URL ảnh (http/https).',
+          });
+        }
+        mime = '';
+        data = '';
+      }
+
+      const row = await SettingDAO.upsertImageByKey({
+        key: 'siteFavicon',
+        imageUrl,
+        mime,
+        data,
+      });
+      const urlForAdmin = resolveSettingImageUrlForAdmin(row, 'siteFavicon');
+      res.json({ success: true, imageUrl: urlForAdmin || '', updatedAt: row.updatedAt || Date.now() });
+    } catch (e) {
+      res.status(400).json({
+        success: false,
+        message: e.message || 'Không lưu được favicon.',
+      });
+    }
+  }
+);
+
+router.get('/settings/site-title', JwtUtil.checkToken, async function (req, res) {
+  const row = await SettingDAO.getByKey('siteTitle');
+  res.json({
+    title: (row && row.data) || '',
+    updatedAt: (row && row.updatedAt) || 0,
+  });
+});
+
+router.put('/settings/site-title', JwtUtil.checkToken, async function (req, res) {
+  try {
+    const title = (req.body && req.body.title != null ? String(req.body.title) : '').trim();
+    if (!title) {
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập tiêu đề (title).' });
+    }
+    const row = await SettingDAO.upsertTextByKey('siteTitle', title);
+    res.json({ success: true, title: row.data || title, updatedAt: row.updatedAt || Date.now() });
+  } catch (e) {
+    res.status(400).json({ success: false, message: e.message || 'Không lưu được title.' });
+  }
+});
+
 /** URL hiển thị cho admin: Firebase / URL đã lưu / proxy legacy (không trả base64 trong JSON). */
 function resolveSettingImageUrlForAdmin(row, kind) {
   if (!row) return '';
@@ -542,7 +681,11 @@ function resolveSettingImageUrlForAdmin(row, kind) {
   if (looksLikeHttpUrl(u)) return u;
   if (row.data && row.mime) {
     const path =
-      kind === 'siteLogo' ? 'site-logo-image' : 'auth-hero-bg-image';
+      kind === 'siteLogo'
+        ? 'site-logo-image'
+        : kind === 'siteFavicon'
+          ? 'site-favicon-image'
+          : 'auth-hero-bg-image';
     return `/api/customer/settings/${path}?v=${row.updatedAt || 0}`;
   }
   return '';

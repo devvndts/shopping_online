@@ -539,21 +539,125 @@ class ProductDetail extends Component {
 
         <form onSubmit={(e) => e.preventDefault()}>
           <div className="ad-prod-form-layout">
-            <div className="ad-prod-form-layout__col">
+            {/* Media (ảnh bìa + gallery) */}
+            <div className="ad-prod-form-layout__col ad-prod-form-layout__col--secondary">
               <div className="ad-form__group">
-                <label className="ad-form__label" htmlFor="ad-prod-id">
-                  ID
+                <label className="ad-form__label" htmlFor="ad-prod-img">
+                  Ảnh bìa 
                 </label>
                 <input
-                  id="ad-prod-id"
-                  className="ad-form__input"
-                  type="text"
-                  value={this.state.txtID}
-                  readOnly
-                  disabled
-                  placeholder="—"
+                  id="ad-prod-img"
+                  className="ad-form__file"
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={(e) => this.previewImage(e)}
                 />
+                <label
+                  className="ad-form__label"
+                  htmlFor="ad-prod-imgurl"
+                  style={{ marginTop: 12 }}
+                >
+                  Hoặc URL ảnh có sẵn (https://…)
+                </label>
+                <input
+                  id="ad-prod-imgurl"
+                  className="ad-form__input"
+                  type="url"
+                  value={this.state.manualImageUrl}
+                  onChange={(e) => this.onManualImageUrlChange(e)}
+                  placeholder="https://"
+                  autoComplete="off"
+                />
+                {this.state.imgProduct ? (
+                  <img
+                    className="ad-preview-img"
+                    src={this.state.imgProduct}
+                    alt="Ảnh bìa xem trước"
+                  />
+                ) : (
+                  <div className="ad-prod-media-placeholder">
+                    Chưa có ảnh bìa. Hãy upload hoặc dán URL.
+                  </div>
+                )}
               </div>
+
+              <div className="ad-form__group" style={{ marginTop: 16 }}>
+                <label className="ad-form__label">
+                  Gallery — ảnh phụ (tối đa {AD_GALLERY_MAX})
+                </label>
+                <p
+                  style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--ad-muted)',
+                    margin: '0 0 12px',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Gợi ý: thêm 3–6 ảnh (góc khác, cận cảnh) để trang chi tiết hiển thị đẹp hơn.
+                </p>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    marginBottom: 10,
+                    alignItems: 'center',
+                  }}
+                >
+                  <input
+                    className="ad-form__input"
+                    type="url"
+                    style={{ flex: '1 1 220px', minWidth: 0 }}
+                    value={this.state.txtGalleryUrl}
+                    onChange={(e) =>
+                      this.setState({ txtGalleryUrl: e.target.value, notice: null })
+                    }
+                    placeholder="https://… (ảnh góc khác)"
+                  />
+                  <button
+                    type="button"
+                    className="ad-btn ad-btn--ghost"
+                    onClick={(e) => this.addGalleryFromUrlField(e)}
+                  >
+                    Thêm URL
+                  </button>
+                </div>
+                <input
+                  className="ad-form__file"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={(e) => this.onGalleryFilesChange(e)}
+                />
+                {galleryItems.length ? (
+                  <div className="ad-prod-gallery-grid">
+                    {galleryItems.map((it) => (
+                      <div key={it.id} className="ad-prod-gallery-item">
+                        <img src={it.preview} alt="" />
+                        <button
+                          type="button"
+                          title="Xoá"
+                          onClick={() => this.removeGalleryItem(it.id)}
+                          className="ad-prod-gallery-remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Thông tin sản phẩm */}
+            <div className="ad-prod-form-layout__col">
+              {isEdit && this.state.txtID ? (
+                <p className="ad-prod-meta">
+                  <span className="ad-prod-meta__label">ID</span>{' '}
+                  <code className="ad-prod-meta__value">{this.state.txtID}</code>
+                </p>
+              ) : null}
+
               <div className="ad-form__group">
                 <label className="ad-form__label" htmlFor="ad-prod-name">
                   Tên sản phẩm
@@ -566,39 +670,50 @@ class ProductDetail extends Component {
                   onChange={(e) =>
                     this.setState({ txtName: e.target.value, notice: null })
                   }
-                  autoFocus={!isEdit}
+                  autoFocus
                 />
               </div>
+
               <div className="ad-form__group">
-                <label className="ad-form__label" htmlFor="ad-prod-slug">
-                  Slug (URL công khai)
+                <label className="ad-form__label" htmlFor="ad-prod-price">
+                  Giá (VNĐ)
                 </label>
                 <input
-                  id="ad-prod-slug"
+                  id="ad-prod-price"
                   className="ad-form__input"
-                  type="text"
-                  value={this.state.txtSlug}
-                  readOnly
-                  disabled
-                  placeholder={
-                    isEdit ? '' : 'Tự tạo khi lưu, ví dụ: laptop-asus-rog-...'
+                  type="number"
+                  min="0"
+                  value={this.state.txtPrice}
+                  onChange={(e) =>
+                    this.setState({ txtPrice: e.target.value, notice: null })
                   }
+                  placeholder="VD: 25990000"
                 />
-                <p
-                  style={{
-                    margin: '6px 0 0',
-                    fontSize: '0.78rem',
-                    color: 'var(--ad-muted)',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  Đường dẫn khách xem:{' '}
-                  <code style={{ fontSize: '0.8em' }}>
-                    /product/{this.state.txtSlug || '…'}
-                  </code>
-                  {!isEdit ? ' · Cập nhật theo tên mỗi lần lưu.' : null}
-                </p>
               </div>
+
+              <div className="ad-form__group">
+                <label className="ad-form__label" htmlFor="ad-prod-cat">
+                  Danh mục
+                </label>
+                <select
+                  id="ad-prod-cat"
+                  className="ad-form__select"
+                  value={cmbCategory}
+                  onChange={(e) =>
+                    this.setState({
+                      cmbCategory: e.target.value,
+                      notice: null,
+                    })
+                  }
+                >
+                  {categories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="ad-form__group">
                 <label className="ad-form__label" htmlFor="ad-prod-brand">
                   Thương hiệu
@@ -649,46 +764,7 @@ class ProductDetail extends Component {
                   </button>
                 </div>
               </div>
-              <div className="ad-form__group">
-                <label className="ad-form__label" htmlFor="ad-prod-price">
-                  Giá (VNĐ)
-                </label>
-                <input
-                  id="ad-prod-price"
-                  className="ad-form__input"
-                  type="number"
-                  min="0"
-                  value={this.state.txtPrice}
-                  onChange={(e) =>
-                    this.setState({ txtPrice: e.target.value, notice: null })
-                  }
-                />
-              </div>
-              <div className="ad-form__group">
-                <label className="ad-form__label" htmlFor="ad-prod-cat">
-                  Danh mục
-                </label>
-                <select
-                  id="ad-prod-cat"
-                  className="ad-form__select"
-                  value={cmbCategory}
-                  onChange={(e) =>
-                    this.setState({
-                      cmbCategory: e.target.value,
-                      notice: null,
-                    })
-                  }
-                >
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            <div className="ad-prod-form-layout__col ad-prod-form-layout__col--secondary">
               <div className="ad-form__group">
                 <label className="ad-form__label" htmlFor="ad-prod-desc">
                   Mô tả / thông tin chi tiết
@@ -696,7 +772,7 @@ class ProductDetail extends Component {
                 <textarea
                   id="ad-prod-desc"
                   className="ad-form__textarea"
-                  rows={6}
+                  rows={7}
                   value={this.state.txtDescription}
                   onChange={(e) =>
                     this.setState({
@@ -707,143 +783,33 @@ class ProductDetail extends Component {
                   placeholder="Nhập mô tả sản phẩm, cấu hình, bảo hành…"
                 />
               </div>
+
               <div className="ad-form__group">
-                <label className="ad-form__label" htmlFor="ad-prod-img">
-                  Ảnh (upload lên Firebase — không dùng base64)
+                <label className="ad-form__label" htmlFor="ad-prod-slug">
+                  Slug (URL công khai)
                 </label>
                 <input
-                  id="ad-prod-img"
-                  className="ad-form__file"
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  onChange={(e) => this.previewImage(e)}
-                />
-                <label className="ad-form__label" htmlFor="ad-prod-imgurl" style={{ marginTop: 12 }}>
-                  Hoặc URL ảnh có sẵn (https://…)
-                </label>
-                <input
-                  id="ad-prod-imgurl"
+                  id="ad-prod-slug"
                   className="ad-form__input"
-                  type="url"
-                  value={this.state.manualImageUrl}
-                  onChange={(e) => this.onManualImageUrlChange(e)}
-                  placeholder="https://"
-                  autoComplete="off"
+                  type="text"
+                  value={this.state.txtSlug}
+                  readOnly
+                  disabled
+                  placeholder={
+                    isEdit ? '' : 'Tự tạo khi lưu, ví dụ: laptop-asus-rog-...'
+                  }
                 />
-              </div>
-
-              {this.state.imgProduct ? (
-                <img
-                  className="ad-preview-img"
-                  src={this.state.imgProduct}
-                  alt="Xem trước"
-                />
-              ) : null}
-
-              <div className="ad-form__group" style={{ marginTop: 20 }}>
-                <label className="ad-form__label">
-                  Gallery — ảnh phụ (tối đa {AD_GALLERY_MAX})
-                </label>
                 <p
                   style={{
-                    fontSize: '0.85rem',
+                    margin: '6px 0 0',
+                    fontSize: '0.78rem',
                     color: 'var(--ad-muted)',
-                    margin: '0 0 12px',
-                    lineHeight: 1.45,
+                    lineHeight: 1.4,
                   }}
                 >
-                  Trang chi tiết sẽ hiển thị slider: ảnh bìa + các ảnh bên dưới. Upload hoặc dán URL
-                  https.
+                  Link: <code style={{ fontSize: '0.8em' }}>/product/{this.state.txtSlug || '…'}</code>
+                  {!isEdit ? ' · Cập nhật theo tên mỗi lần lưu.' : null}
                 </p>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    marginBottom: 10,
-                    alignItems: 'center',
-                  }}
-                >
-                  <input
-                    className="ad-form__input"
-                    type="url"
-                    style={{ flex: '1 1 220px', minWidth: 0 }}
-                    value={this.state.txtGalleryUrl}
-                    onChange={(e) =>
-                      this.setState({ txtGalleryUrl: e.target.value, notice: null })
-                    }
-                    placeholder="https://… (ảnh góc khác)"
-                  />
-                  <button
-                    type="button"
-                    className="ad-btn ad-btn--ghost"
-                    onClick={(e) => this.addGalleryFromUrlField(e)}
-                  >
-                    Thêm URL
-                  </button>
-                </div>
-                <input
-                  className="ad-form__file"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  onChange={(e) => this.onGalleryFilesChange(e)}
-                />
-                {galleryItems.length ? (
-                  <div
-                    style={{
-                      marginTop: 12,
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 10,
-                    }}
-                  >
-                    {galleryItems.map((it) => (
-                      <div
-                        key={it.id}
-                        style={{
-                          position: 'relative',
-                          width: 76,
-                          height: 76,
-                        }}
-                      >
-                        <img
-                          src={it.preview}
-                          alt=""
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            borderRadius: 10,
-                            border: '1px solid rgba(15,23,42,0.12)',
-                          }}
-                        />
-                        <button
-                          type="button"
-                          title="Xoá"
-                          onClick={() => this.removeGalleryItem(it.id)}
-                          style={{
-                            position: 'absolute',
-                            top: -5,
-                            right: -5,
-                            width: 22,
-                            height: 22,
-                            borderRadius: '50%',
-                            border: 'none',
-                            background: '#dc2626',
-                            color: '#fff',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                            lineHeight: 1,
-                            padding: 0,
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
               </div>
             </div>
           </div>

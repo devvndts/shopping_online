@@ -9,3 +9,21 @@
   background: var(--cc-white);
   box-shadow: var(--cc-shadow-card);
 }
+
+/* Scroll reveal */
+.cc-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  filter: saturate(0.98);
+  transition: opacity 520ms var(--cc-ease-out),
+    transform 520ms var(--cc-ease-out),
+    filter 520ms var(--cc-ease-out);
+  transition-delay: calc(var(--cc-reveal-i, 0) * var(--cc-reveal-delay-step, 80ms));
+  will-change: opacity, transform;
+}
+
+.cc-reveal.cc-reveal--in {
+  opacity: 1;
+  transform: translateY(0);
+  filter: saturate(1);
+}

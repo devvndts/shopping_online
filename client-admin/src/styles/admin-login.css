@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=JetBrains+Mono:wght@500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700;1,800&display=swap");
 
 :root {
   --ad-login-bg0: #0c1222;
@@ -12,8 +12,7 @@
   --ad-login-error-bg: #fef2f2;
   --ad-login-error-text: #b91c1c;
   --ad-login-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
-  --ad-font: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --ad-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --ad-font: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 .ca-admin-login {
@@ -123,7 +122,7 @@
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.18);
-  font-family: var(--ad-font-mono);
+  font-family: var(--ad-font);
   font-size: 0.75rem;
   color: #94a3b8;
 }

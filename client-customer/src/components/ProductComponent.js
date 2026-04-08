@@ -74,11 +74,12 @@ class Product extends Component {
             </div>
           ) : (
             <div className="cc-product-list-page__grid">
-              {this.state.products.map((item) => (
+              {this.state.products.map((item, idx) => (
                 <ProductCard
                   key={item._id}
                   item={item}
                   showCategoryMeta={showCategoryOnCard}
+                  animIndex={idx}
                 />
               ))}
             </div>

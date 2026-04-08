@@ -6,10 +6,10 @@
 .body-customer {
   max-width: var(--cc-max-width);
   width: 100%;
-  margin: 18px auto 28px;
+  margin: 18px auto 42px;
   padding: 0 var(--cc-page-padding-x) 0;
   box-sizing: border-box;
-  background-color: #fff;
+  background-color: transparent;
   overflow: clip;
 }
 

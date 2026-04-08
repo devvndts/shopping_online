@@ -8,7 +8,24 @@ class Active extends Component {
     this.state = {
       txtID: "",
       txtToken: "",
+      isSubmitting: false,
     };
+  }
+
+  componentDidMount() {
+    try {
+      const qs = typeof window !== "undefined" ? window.location.search : "";
+      const sp = new URLSearchParams(qs || "");
+      const id = (sp.get("id") || "").trim();
+      const token = (sp.get("token") || "").trim();
+      if (id && token) {
+        this.setState({ txtID: id, txtToken: token }, () => {
+          this.apiActive(id, token);
+        });
+      }
+    } catch {
+      // ignore
+    }
   }
 
   render() {
@@ -18,7 +35,8 @@ class Active extends Component {
           <header className="cc-auth__head">
             <h1 className="cc-auth__title">Kích hoạt tài khoản</h1>
             <p className="cc-auth__subtitle">
-              Nhập mã ID và token đã được gửi qua email để hoàn tất đăng ký.
+              Nếu bạn bấm từ email, hệ thống sẽ tự kích hoạt. Hoặc bạn có thể
+              nhập ID và token để hoàn tất đăng ký.
             </p>
           </header>
 
@@ -57,8 +75,8 @@ class Active extends Component {
               </div>
             </div>
 
-            <button className="cc-auth__submit" type="submit">
-              Kích hoạt
+            <button className="cc-auth__submit" type="submit" disabled={this.state.isSubmitting}>
+              {this.state.isSubmitting ? "Đang kích hoạt…" : "Kích hoạt"}
             </button>
           </form>
         </div>
@@ -68,6 +86,8 @@ class Active extends Component {
 
   btnActiveClick(e) {
     e.preventDefault();
+
+    if (this.state.isSubmitting) return;
 
     const id = this.state.txtID;
     const token = this.state.txtToken;
@@ -80,17 +100,25 @@ class Active extends Component {
   }
 
   apiActive(id, token) {
+    this.setState({ isSubmitting: true });
     const body = { id: id, token: token };
 
-    axios.post("/api/customer/active", body).then((res) => {
-      const result = res.data;
-
-      if (result) {
-        notifySuccess("Kích hoạt tài khoản thành công.");
-      } else {
-        notifyError("Kích hoạt thất bại. Kiểm tra lại ID và token.");
-      }
-    });
+    axios
+      .post("/api/customer/active", body)
+      .then((res) => {
+        const result = res.data;
+        if (result) {
+          notifySuccess("Kích hoạt tài khoản thành công.");
+        } else {
+          notifyError("Kích hoạt thất bại. Kiểm tra lại ID và token.");
+        }
+      })
+      .catch(() => {
+        notifyError("Không thể kết nối máy chủ. Vui lòng thử lại.");
+      })
+      .finally(() => {
+        this.setState({ isSubmitting: false });
+      });
   }
 }
 

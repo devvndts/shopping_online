@@ -143,7 +143,7 @@ class Review extends Component {
                             {it.productId || '—'}
                           </div>
                         </td>
-                        <td style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+                        <td style={{ fontFamily: 'var(--ad-font)' }}>
                           {starsText(it.stars)}
                         </td>
                         <td>{it.author || '—'}</td>

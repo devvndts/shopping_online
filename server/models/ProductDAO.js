@@ -49,6 +49,7 @@ const ProductDAO = {
 
   async selectBySkipLimit(skip, limit) {
     const products = await Models.Product.find({})
+      .sort({ cdate: -1, _id: -1 })
       .skip(skip)
       .limit(limit)
       .exec();
