@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { productImageSrc } from '../utils/productImageSrc';
 import React, { Component } from 'react';
 import { Navigate } from 'react-router-dom';
 import MyContext from '../contexts/MyContext';
@@ -126,7 +127,7 @@ class Myorders extends Component {
                               <div className="cc-orders__item" key={it.product._id}>
                                 <img
                                   className="cc-orders__thumb"
-                                  src={'data:image/jpg;base64,' + it.product.image}
+                                  src={productImageSrc(it.product.image)}
                                   alt={it.product.name}
                                   loading="lazy"
                                 />

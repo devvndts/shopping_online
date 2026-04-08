@@ -30,8 +30,9 @@ class Login extends Component {
       .get("/api/customer/settings/auth-hero-bg")
       .then((res) => {
         const row = res.data || {};
-        if (row && row.mime && row.data) {
-          this.setState({ heroBg: { mime: row.mime, data: row.data } });
+        const u = (row.imageUrl || "").trim();
+        if (u) {
+          this.setState({ heroBg: { imageUrl: u } });
         } else {
           this.setState({ heroBg: null });
         }
@@ -62,7 +63,7 @@ class Login extends Component {
             radial-gradient(980px 520px at 86% 12%, rgba(37, 99, 235, 0.35), transparent 54%),
             radial-gradient(880px 520px at 60% 86%, rgba(220, 38, 38, 0.22), transparent 60%),
             linear-gradient(135deg, rgba(11, 15, 20, 0.58) 0%, rgba(10, 18, 32, 0.52) 50%, rgba(11, 15, 20, 0.60) 100%),
-            url(data:${this.state.heroBg.mime};base64,${this.state.heroBg.data})`,
+            url(${this.state.heroBg.imageUrl})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }

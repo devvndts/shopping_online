@@ -1,18 +1,7 @@
 import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
-import { notifyError, notifySuccess, notifyWarning } from '../utils/notify';
-
-function stripBase64DataUrl(raw) {
-  if (!raw) return '';
-  return String(raw).replace(/^data:([^;]+);base64,/i, '');
-}
-
-function extractMime(raw) {
-  if (!raw) return '';
-  const m = String(raw).match(/^data:([^;]+);base64,/i);
-  return m ? m[1] : '';
-}
+import { notifyPromise, notifyWarning } from '../utils/notify';
 
 class Settings extends Component {
   static contextType = MyContext;
@@ -24,10 +13,21 @@ class Settings extends Component {
       saving: false,
       bgPreview: '',
       logoPreview: '',
+      bgImageFile: null,
+      logoImageFile: null,
+      bgManualUrl: '',
+      logoManualUrl: '',
       notice: null,
       updatedAt: 0,
       logoUpdatedAt: 0,
     };
+    this._bgObjectUrl = null;
+    this._logoObjectUrl = null;
+  }
+
+  componentWillUnmount() {
+    if (this._bgObjectUrl) URL.revokeObjectURL(this._bgObjectUrl);
+    if (this._logoObjectUrl) URL.revokeObjectURL(this._logoObjectUrl);
   }
 
   componentDidMount() {
@@ -47,11 +47,29 @@ class Settings extends Component {
       notifyWarning('Vui lòng chọn file ảnh.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      this.setState({ bgPreview: evt.target.result, notice: null });
-    };
-    reader.readAsDataURL(file);
+    if (this._bgObjectUrl) URL.revokeObjectURL(this._bgObjectUrl);
+    this._bgObjectUrl = URL.createObjectURL(file);
+    this.setState({
+      bgPreview: this._bgObjectUrl,
+      bgImageFile: file,
+      bgManualUrl: '',
+      notice: null,
+    });
+  };
+
+  onBgUrlChange = (e) => {
+    const v = (e.target.value || '').trim();
+    if (this._bgObjectUrl) {
+      URL.revokeObjectURL(this._bgObjectUrl);
+      this._bgObjectUrl = null;
+    }
+    const show = /^https?:\/\//i.test(v) ? v : '';
+    this.setState({
+      bgManualUrl: e.target.value,
+      bgImageFile: null,
+      bgPreview: show,
+      notice: null,
+    });
   };
 
   apiGetAuthHeroBg() {
@@ -60,18 +78,21 @@ class Settings extends Component {
       .get('/api/admin/settings/auth-hero-bg', config)
       .then((res) => {
         const row = res.data || {};
-        if (row && row.mime && row.data) {
+        const u = (row.imageUrl || '').trim();
+        if (u) {
           this.setState({
-            bgPreview: `data:${row.mime};base64,${row.data}`,
+            bgPreview: u,
+            bgManualUrl: u,
+            bgImageFile: null,
             updatedAt: row.updatedAt || 0,
             loading: false,
           });
         } else {
-          this.setState({ bgPreview: '', updatedAt: 0, loading: false });
+          this.setState({ bgPreview: '', bgManualUrl: '', updatedAt: 0, loading: false });
         }
       })
       .catch(() => {
-        this.setState({ bgPreview: '', updatedAt: 0, loading: false });
+        this.setState({ bgPreview: '', bgManualUrl: '', updatedAt: 0, loading: false });
         this.setNotice('error', 'Không thể tải cấu hình giao diện.');
       });
   }
@@ -84,11 +105,29 @@ class Settings extends Component {
       notifyWarning('Vui lòng chọn file ảnh.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      this.setState({ logoPreview: evt.target.result, notice: null });
-    };
-    reader.readAsDataURL(file);
+    if (this._logoObjectUrl) URL.revokeObjectURL(this._logoObjectUrl);
+    this._logoObjectUrl = URL.createObjectURL(file);
+    this.setState({
+      logoPreview: this._logoObjectUrl,
+      logoImageFile: file,
+      logoManualUrl: '',
+      notice: null,
+    });
+  };
+
+  onLogoUrlChange = (e) => {
+    const v = (e.target.value || '').trim();
+    if (this._logoObjectUrl) {
+      URL.revokeObjectURL(this._logoObjectUrl);
+      this._logoObjectUrl = null;
+    }
+    const show = /^https?:\/\//i.test(v) ? v : '';
+    this.setState({
+      logoManualUrl: e.target.value,
+      logoImageFile: null,
+      logoPreview: show,
+      notice: null,
+    });
   };
 
   apiGetSiteLogo() {
@@ -97,90 +136,95 @@ class Settings extends Component {
       .get('/api/admin/settings/site-logo', config)
       .then((res) => {
         const row = res.data || {};
-        if (row && row.mime && row.data) {
+        const u = (row.imageUrl || '').trim();
+        if (u) {
           this.setState({
-            logoPreview: `data:${row.mime};base64,${row.data}`,
+            logoPreview: u,
+            logoManualUrl: u,
+            logoImageFile: null,
             logoUpdatedAt: row.updatedAt || 0,
           });
         } else {
-          this.setState({ logoPreview: '', logoUpdatedAt: 0 });
+          this.setState({ logoPreview: '', logoManualUrl: '', logoUpdatedAt: 0 });
         }
       })
       .catch(() => {
-        this.setState({ logoPreview: '', logoUpdatedAt: 0 });
+        this.setState({ logoPreview: '', logoManualUrl: '', logoUpdatedAt: 0 });
       });
   }
 
   saveSiteLogo = () => {
     if (this.state.saving) return;
-    const mime = extractMime(this.state.logoPreview);
-    const data = stripBase64DataUrl(this.state.logoPreview);
-    if (!mime || !data) {
-      this.setNotice('error', 'Vui lòng chọn logo trước khi lưu.');
-      notifyWarning('Vui lòng chọn logo trước khi lưu.');
+    const hasFile = !!this.state.logoImageFile;
+    const url = (this.state.logoManualUrl || '').trim();
+    const hasUrl = /^https?:\/\//i.test(url);
+    if (!hasFile && !hasUrl) {
+      this.setNotice('error', 'Chọn file ảnh hoặc nhập URL https.');
+      notifyWarning('Chọn file ảnh hoặc nhập URL https.');
       return;
     }
     const config = { headers: { 'x-access-token': this.context.token } };
+    const fd = new FormData();
+    if (hasFile) fd.append('image', this.state.logoImageFile);
+    else fd.append('imageUrl', url);
     this.setState({ saving: true });
-    axios
-      .put('/api/admin/settings/site-logo', { mime, data }, config)
+    const req = axios
+      .put('/api/admin/settings/site-logo', fd, config)
       .then((res) => {
         const ok = res.data && res.data.success;
-        if (ok) {
-          this.setNotice('success', 'Đã lưu logo.');
-          notifySuccess('Đã lưu logo.');
-          this.setState({ logoUpdatedAt: res.data.updatedAt || Date.now() });
-        } else {
-          this.setNotice('error', 'Lưu thất bại.');
-          notifyError('Lưu thất bại.');
-        }
-      })
-      .catch((err) => {
-        const msg =
-          (err && err.response && err.response.data && err.response.data.message) ||
-          'Lưu thất bại.';
-        this.setNotice('error', msg);
-        notifyError(msg);
+        if (!ok) throw new Error((res.data && res.data.message) || 'Lưu thất bại.');
+        this.setState({
+          logoUpdatedAt: res.data.updatedAt || Date.now(),
+          logoPreview: res.data.imageUrl || this.state.logoPreview,
+          logoManualUrl: res.data.imageUrl || url,
+          logoImageFile: null,
+        });
       })
       .finally(() => {
         this.setState({ saving: false });
       });
+    notifyPromise(req, {
+      pending: 'Đang tải lên logo…',
+      success: 'Đã lưu logo.',
+      error: 'Lưu logo thất bại.',
+    });
   };
 
   saveAuthHeroBg = () => {
     if (this.state.saving) return;
-    const mime = extractMime(this.state.bgPreview);
-    const data = stripBase64DataUrl(this.state.bgPreview);
-    if (!mime || !data) {
-      this.setNotice('error', 'Vui lòng chọn ảnh background trước khi lưu.');
-      notifyWarning('Vui lòng chọn ảnh background trước khi lưu.');
+    const hasFile = !!this.state.bgImageFile;
+    const url = (this.state.bgManualUrl || '').trim();
+    const hasUrl = /^https?:\/\//i.test(url);
+    if (!hasFile && !hasUrl) {
+      this.setNotice('error', 'Chọn file ảnh hoặc nhập URL https.');
+      notifyWarning('Chọn file ảnh hoặc nhập URL https.');
       return;
     }
     const config = { headers: { 'x-access-token': this.context.token } };
+    const fd = new FormData();
+    if (hasFile) fd.append('image', this.state.bgImageFile);
+    else fd.append('imageUrl', url);
     this.setState({ saving: true });
-    axios
-      .put('/api/admin/settings/auth-hero-bg', { mime, data }, config)
+    const req = axios
+      .put('/api/admin/settings/auth-hero-bg', fd, config)
       .then((res) => {
         const ok = res.data && res.data.success;
-        if (ok) {
-          this.setNotice('success', 'Đã lưu background đăng nhập/đăng ký.');
-          notifySuccess('Đã lưu background đăng nhập/đăng ký.');
-          this.setState({ updatedAt: res.data.updatedAt || Date.now() });
-        } else {
-          this.setNotice('error', 'Lưu thất bại.');
-          notifyError('Lưu thất bại.');
-        }
-      })
-      .catch((err) => {
-        const msg =
-          (err && err.response && err.response.data && err.response.data.message) ||
-          'Lưu thất bại.';
-        this.setNotice('error', msg);
-        notifyError(msg);
+        if (!ok) throw new Error((res.data && res.data.message) || 'Lưu thất bại.');
+        this.setState({
+          updatedAt: res.data.updatedAt || Date.now(),
+          bgPreview: res.data.imageUrl || this.state.bgPreview,
+          bgManualUrl: res.data.imageUrl || url,
+          bgImageFile: null,
+        });
       })
       .finally(() => {
         this.setState({ saving: false });
       });
+    notifyPromise(req, {
+      pending: 'Đang tải lên background…',
+      success: 'Đã lưu background đăng nhập/đăng ký.',
+      error: 'Lưu background thất bại.',
+    });
   };
 
   render() {
@@ -198,7 +242,7 @@ class Settings extends Component {
       <div className="ad-page">
         <h1 className="ad-page__title">Cài đặt giao diện</h1>
         <p className="ad-page__lead">
-          Tải ảnh background cho màn hình đăng nhập/đăng ký (client-customer).
+          Upload ảnh lên Firebase (multipart) hoặc dán URL https — không lưu base64 trong Mongo.
         </p>
 
         <div className="ad-card">
@@ -220,6 +264,19 @@ class Settings extends Component {
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     onChange={this.previewBg}
+                  />
+                </div>
+                <div className="ad-form__group">
+                  <label className="ad-form__label" htmlFor="ad-auth-bg-url">
+                    Hoặc URL https
+                  </label>
+                  <input
+                    id="ad-auth-bg-url"
+                    className="ad-form__input"
+                    type="url"
+                    value={this.state.bgManualUrl}
+                    onChange={this.onBgUrlChange}
+                    placeholder="https://"
                   />
                 </div>
 
@@ -302,14 +359,27 @@ class Settings extends Component {
           <div className="ad-card__body">
             <div className="ad-form__group">
               <label className="ad-form__label" htmlFor="ad-site-logo">
-                Logo header (khuyến nghị PNG/SVG, nền trong, cao ~64px)
+                Logo header (khuyến nghị PNG, nền trong, cao ~64px)
               </label>
               <input
                 id="ad-site-logo"
                 className="ad-form__file"
                 type="file"
-                accept="image/png,image/svg+xml,image/jpeg,image/webp"
+                accept="image/png,image/jpeg,image/webp"
                 onChange={this.previewLogo}
+              />
+            </div>
+            <div className="ad-form__group">
+              <label className="ad-form__label" htmlFor="ad-site-logo-url">
+                Hoặc URL https
+              </label>
+              <input
+                id="ad-site-logo-url"
+                className="ad-form__input"
+                type="url"
+                value={this.state.logoManualUrl}
+                onChange={this.onLogoUrlChange}
+                placeholder="https://"
               />
             </div>
 
@@ -370,4 +440,3 @@ class Settings extends Component {
 }
 
 export default Settings;
-

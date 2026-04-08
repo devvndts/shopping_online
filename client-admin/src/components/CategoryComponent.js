@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
 import CategoryDetail from './CategoryDetailComponent';
+import { customerCategoryPath } from '../utils/customerProductPath';
 
 class Category extends Component {
   static contextType = MyContext;
@@ -91,6 +92,25 @@ class Category extends Component {
                         {item._id}
                       </td>
                       <td>{item.name}</td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div style={{ fontSize: '0.8rem', lineHeight: 1.35 }}>
+                          {item.slug ? (
+                            <code title={item.slug}>{item.slug}</code>
+                          ) : (
+                            <span style={{ color: 'var(--ad-muted)' }}>—</span>
+                          )}
+                          <div style={{ marginTop: 6 }}>
+                            <a
+                              href={customerCategoryPath(item)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ad-table__ext-link"
+                            >
+                              Mở trên cửa hàng
+                            </a>
+                          </div>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

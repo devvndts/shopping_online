@@ -5,6 +5,7 @@ import AdminSidebar from "./AdminSidebar";
 import Home from "./HomeComponent";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Category from "./CategoryComponent";
+import AdminBrands from "./BrandComponent";
 import Product from "./ProductComponent";
 import Customer from "./CustomerComponent";
 import Order from "./OrderComponent";
@@ -68,6 +69,7 @@ class Main extends Component {
                 />
                 <Route path="/admin/home" element={<Home />} />
                 <Route path="/admin/category" element={<Category />} />
+                <Route path="/admin/brands" element={<AdminBrands />} />
                 <Route path="/admin/product" element={<Product />} />
                 <Route path="/admin/customers" element={<Customer />} />
                 <Route path="/admin/orders" element={<Order />} />

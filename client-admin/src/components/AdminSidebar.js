@@ -38,6 +38,16 @@ class AdminSidebar extends Component {
             Danh mục
           </NavLink>
           <NavLink
+            to="/admin/brands"
+            className={linkClass}
+            onClick={onNavigate}
+          >
+            <span className="ad-nav__icon" aria-hidden>
+              ⌁
+            </span>
+            Thương hiệu
+          </NavLink>
+          <NavLink
             to="/admin/product"
             className={linkClass}
             onClick={onNavigate}

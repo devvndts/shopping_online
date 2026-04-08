@@ -8,13 +8,15 @@ const SettingDAO = {
     return row || null;
   },
 
-  async upsertAuthHeroBg({ mime, data }) {
+  async upsertAuthHeroBgByUrl(imageUrl) {
     const key = 'authHeroBg';
     const updatedAt = Date.now();
+    const url = String(imageUrl || '').trim();
     const payload = {
       key,
-      mime: mime || '',
-      data: data || '',
+      imageUrl: url,
+      mime: '',
+      data: '',
       updatedAt,
     };
     const result = await Models.Setting.findOneAndUpdate(
@@ -25,13 +27,15 @@ const SettingDAO = {
     return result || null;
   },
 
-  async upsertSiteLogo({ mime, data }) {
+  async upsertSiteLogoByUrl(imageUrl) {
     const key = 'siteLogo';
     const updatedAt = Date.now();
+    const url = String(imageUrl || '').trim();
     const payload = {
       key,
-      mime: mime || '',
-      data: data || '',
+      imageUrl: url,
+      mime: '',
+      data: '',
       updatedAt,
     };
     const result = await Models.Setting.findOneAndUpdate(
@@ -44,4 +48,3 @@ const SettingDAO = {
 };
 
 module.exports = SettingDAO;
-

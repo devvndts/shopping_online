@@ -508,8 +508,8 @@
   color: var(--cc-white);
 }
 
-/* Checkout confirmation modal */
-.cc-modal-backdrop {
+/* Checkout confirmation modal (tách class khỏi modal.css — tránh position:fixed trùng) */
+.cc-checkout-backdrop {
   position: fixed;
   inset: 0;
   z-index: 10050;
@@ -531,7 +531,7 @@
   }
 }
 
-.cc-modal {
+.cc-checkout-panel {
   width: 100%;
   max-width: 400px;
   padding: 28px;
@@ -554,21 +554,21 @@
   }
 }
 
-.cc-modal__title {
+.cc-checkout__title {
   margin: 0 0 10px;
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--cc-blue-dark);
 }
 
-.cc-modal__text {
+.cc-checkout__text {
   margin: 0 0 18px;
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--cc-gray-600);
 }
 
-.cc-modal__total {
+.cc-checkout__total {
   margin: 0 0 22px;
   padding: 12px 14px;
   font-size: 1.05rem;
@@ -579,14 +579,14 @@
   border: 1px solid var(--cc-gray-200);
 }
 
-.cc-modal__actions {
+.cc-checkout__actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
   flex-wrap: wrap;
 }
 
-.cc-modal__btn {
+.cc-checkout__btn {
   min-width: 108px;
   padding: 10px 18px;
   font-family: var(--cc-font);
@@ -598,27 +598,27 @@
   transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.cc-modal__btn--ghost {
+.cc-checkout__btn--ghost {
   color: var(--cc-gray-600);
   background: var(--cc-gray-100);
 }
 
-.cc-modal__btn--ghost:hover {
+.cc-checkout__btn--ghost:hover {
   background: var(--cc-gray-200);
   color: var(--cc-blue-dark);
 }
 
-.cc-modal__btn--primary {
+.cc-checkout__btn--primary {
   color: var(--cc-white);
   background: var(--cc-blue-accent);
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
-.cc-modal__btn--primary:hover {
+.cc-checkout__btn--primary:hover {
   filter: brightness(1.06);
 }
 
-.cc-modal__btn:focus-visible {
+.cc-checkout__btn:focus-visible {
   outline: 2px solid var(--cc-blue-accent);
   outline-offset: 2px;
 }

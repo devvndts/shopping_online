@@ -14,6 +14,25 @@ const CategorySchema = mongoose.Schema(
   {
     _id: mongoose.Schema.Types.ObjectId,
     name: String,
+    slug: { type: String, index: true, unique: true, sparse: true },
+  },
+  { versionKey: false }
+);
+
+/** Nhúng trong Product: slug KHÔNG unique (nhiều SP cùng danh mục). */
+const ProductCategoryEmbedSchema = mongoose.Schema(
+  {
+    _id: mongoose.Schema.Types.ObjectId,
+    name: String,
+    slug: String,
+  },
+  { versionKey: false }
+);
+
+const BrandSchema = mongoose.Schema(
+  {
+    _id: mongoose.Schema.Types.ObjectId,
+    name: String,
   },
   { versionKey: false }
 );
@@ -36,11 +55,15 @@ const ProductSchema = mongoose.Schema(
   {
     _id: mongoose.Schema.Types.ObjectId,
     name: String,
+    brand: String,
+    slug: { type: String, index: true, unique: true, sparse: true },
     price: Number,
     image: String,
+    /** Ảnh thêm (URL); ảnh bìa vẫn dùng `image` */
+    gallery: { type: [String], default: [] },
     description: String,
     cdate: Number,
-    category: CategorySchema,
+    category: ProductCategoryEmbedSchema,
   },
   { versionKey: false }
 );
@@ -72,6 +95,7 @@ const SettingSchema = mongoose.Schema(
   {
     _id: mongoose.Schema.Types.ObjectId,
     key: String,
+    imageUrl: String,
     mime: String,
     data: String,
     updatedAt: Number,
@@ -85,6 +109,7 @@ const SlideSchema = mongoose.Schema(
     title: String,
     subtitle: String,
     href: String,
+    imageUrl: String,
     imageMime: String,
     imageData: String,
     active: Number,
@@ -112,6 +137,7 @@ const ReviewSchema = mongoose.Schema(
 // Models
 const Admin = mongoose.model('Admin', AdminSchema);
 const Category = mongoose.model('Category', CategorySchema);
+const Brand = mongoose.model('Brand', BrandSchema);
 const Customer = mongoose.model('Customer', CustomerSchema);
 const Product = mongoose.model('Product', ProductSchema);
 const Order = mongoose.model('Order', OrderSchema);
@@ -122,6 +148,7 @@ const Review = mongoose.model('Review', ReviewSchema);
 module.exports = {
   Admin,
   Category,
+  Brand,
   Customer,
   Product,
   Order,

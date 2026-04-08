@@ -1,10 +1,19 @@
 import axios from 'axios';
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { A11y, Keyboard, Navigation, Pagination } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 import withRouter from '../utils/withRouter';
 import MyContext from '../contexts/MyContext';
 import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '../utils/notify';
 import { formatVnd } from '../utils/formatVnd';
+import { productPath } from '../utils/productPath';
+import { categoryPath } from '../utils/categoryPath';
+import { productImageSrc } from '../utils/productImageSrc';
+import { productGallerySrcs } from '../utils/productGallerySrcs';
 import ProductCard from './ProductCard';
 
 class ProductDetail extends Component {
@@ -25,7 +34,9 @@ class ProductDetail extends Component {
       reviewContent: '',
       reviewSubmitting: false,
       descExpanded: false,
+      pdpSlide: 0,
     };
+    this._pdpSwiper = null;
   }
 
   clampQty(n) {
@@ -117,7 +128,7 @@ class ProductDetail extends Component {
             </span>
             {catId ? (
               <>
-                <Link to={'/product/category/' + catId}>{catName}</Link>
+                <Link to={categoryPath(cat)}>{catName}</Link>
                 <span className="cc-pdp__crumb-sep" aria-hidden="true">
                   /
                 </span>
@@ -128,20 +139,14 @@ class ProductDetail extends Component {
 
           <div className="cc-pdp__grid">
             <div className="cc-pdp__gallery">
-              <div className="cc-pdp__img-stage">
-                <img
-                  className="cc-pdp__img"
-                  src={'data:image/jpg;base64,' + prod.image}
-                  alt={prod.name}
-                />
-              </div>
+              {this.renderProductGallery(prod)}
             </div>
 
             <div className="cc-pdp__info">
               {catId ? (
                 <p className="cc-pdp__cat">
                   <Link
-                    to={'/product/category/' + catId}
+                    to={categoryPath(cat)}
                     className="cc-pdp__cat-link"
                   >
                     {catName}
@@ -150,6 +155,9 @@ class ProductDetail extends Component {
               ) : null}
 
               <h1 className="cc-pdp__title">{prod.name}</h1>
+              {prod.brand ? (
+                <p className="cc-pdp__brand">{prod.brand}</p>
+              ) : null}
 
               <p className="cc-pdp__price">
                 {formatVnd(prod.price)}
@@ -310,6 +318,80 @@ class ProductDetail extends Component {
           </section>
 
           {this.renderRelated(prod)}
+        </div>
+      </div>
+    );
+  }
+
+  renderProductGallery(prod) {
+    const gallerySrcs = productGallerySrcs(prod);
+    const mainSrc = gallerySrcs[0] || productImageSrc(prod.image);
+    const multi = gallerySrcs.length > 1;
+
+    if (!multi) {
+      return (
+        <div className="cc-pdp__img-stage">
+          <img className="cc-pdp__img" src={mainSrc} alt={prod.name} loading="eager" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="cc-pdp__gallery-inner">
+        <Swiper
+          key={
+            String(prod._id || '') +
+            '-' +
+            gallerySrcs.map((s) => s.slice(-24)).join('.')
+          }
+          modules={[Pagination, Navigation, Keyboard, A11y]}
+          spaceBetween={12}
+          slidesPerView={1}
+          pagination={{ clickable: true, dynamicBullets: true }}
+          navigation
+          keyboard={{ enabled: true }}
+          className="cc-pdp__swiper"
+          onSwiper={(sw) => {
+            this._pdpSwiper = sw;
+          }}
+          onSlideChange={(sw) => this.setState({ pdpSlide: sw.activeIndex })}
+        >
+          {gallerySrcs.map((src, i) => (
+            <SwiperSlide key={`${src}-${i}`}>
+              <div className="cc-pdp__slide-frame">
+                <img
+                  className="cc-pdp__img"
+                  src={src}
+                  alt={`${prod.name} — ảnh ${i + 1}/${gallerySrcs.length}`}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                />
+              </div>
+            </SwiperSlide>
+          ))}
+        </Swiper>
+        <div className="cc-pdp__thumbs-wrap">
+         
+          <div className="cc-pdp__thumbs" role="tablist" aria-label="Chọn ảnh">
+            {gallerySrcs.map((src, i) => (
+              <button
+                key={`thumb-${i}`}
+                type="button"
+                role="tab"
+                aria-selected={this.state.pdpSlide === i ? 'true' : 'false'}
+                aria-label={`Ảnh ${i + 1}`}
+                className={
+                  'cc-pdp__thumb' +
+                  (this.state.pdpSlide === i ? ' cc-pdp__thumb--active' : '')
+                }
+                onClick={() => {
+                  if (this._pdpSwiper) this._pdpSwiper.slideTo(i);
+                  this.setState({ pdpSlide: i });
+                }}
+              >
+                <img src={src} alt="" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -498,6 +580,7 @@ class ProductDetail extends Component {
         reviews: [],
         reviewsLoading: false,
         descExpanded: false,
+        pdpSlide: 0,
       });
       this.apiGetProduct(this.props.params.id);
     }
@@ -509,12 +592,19 @@ class ProductDetail extends Component {
       return;
     }
     axios
-      .get('/api/customer/products/' + id)
+      .get('/api/customer/products/' + encodeURIComponent(id))
       .then((res) => {
         const result = res.data;
         if (!result || !result._id) {
           this.setState({ product: null, status: 'notfound' });
           return;
+        }
+        if (
+          result.slug &&
+          typeof id === 'string' &&
+          /^[a-f0-9]{24}$/i.test(id)
+        ) {
+          this.props.navigate(productPath(result), { replace: true });
         }
         this.setState({
           product: result,
@@ -525,6 +615,7 @@ class ProductDetail extends Component {
           tab: 'detail',
           reviews: [],
           reviewsLoading: false,
+          pdpSlide: 0,
         });
         this.apiGetReviews(result._id);
         this.apiGetRelated(result);
@@ -593,8 +684,11 @@ class ProductDetail extends Component {
     if (!cid) return;
 
     this.setState({ relatedLoading: true });
+    const catKey = encodeURIComponent(cat.slug || cid);
     axios
-      .get('/api/customer/products/category/' + cid, { params: { limit: 12 } })
+      .get('/api/customer/products/category/' + catKey, {
+        params: { limit: 12 },
+      })
       .then((res) => {
         const list = (res.data || []).filter((p) => String(p._id) !== id).slice(0, 4);
         this.setState({ related: list, relatedLoading: false });

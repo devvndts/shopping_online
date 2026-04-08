@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
 import AdminModal from './AdminModal';
+import { notifyPromise } from '../utils/notify';
 
 class CategoryDetail extends Component {
   static contextType = MyContext;
@@ -11,6 +12,7 @@ class CategoryDetail extends Component {
     this.state = {
       txtID: '',
       txtName: '',
+      txtSlug: '',
       notice: null,
     };
   }
@@ -32,12 +34,14 @@ class CategoryDetail extends Component {
       this.setState({
         txtID: this.props.item._id,
         txtName: this.props.item.name || '',
+        txtSlug: this.props.item.slug != null ? String(this.props.item.slug) : '',
         notice: null,
       });
     } else {
       this.setState({
         txtID: '',
         txtName: '',
+        txtSlug: '',
         notice: null,
       });
     }
@@ -97,47 +101,44 @@ class CategoryDetail extends Component {
 
   apiPostCategory(cate) {
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
-      .post('/api/admin/categories', cate, config)
-      .then((res) => {
-        if (res.data) {
-          this.apiGetCategories();
-          this.props.onClose();
-        } else {
-          this.setNotice('error', 'Thêm danh mục thất bại.');
-        }
-      })
-      .catch(() => this.setNotice('error', 'Lỗi kết nối khi thêm.'));
+    const p = axios.post('/api/admin/categories', cate, config).then((res) => {
+      if (!res.data) throw new Error('Thêm danh mục thất bại.');
+      this.apiGetCategories();
+      this.props.onClose();
+    });
+    notifyPromise(p, {
+      pending: 'Đang thêm danh mục…',
+      success: 'Đã thêm danh mục.',
+      error: 'Thêm danh mục thất bại.',
+    });
   }
 
   apiPutCategory(id, cate) {
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
-      .put('/api/admin/categories/' + id, cate, config)
-      .then((res) => {
-        if (res.data) {
-          this.apiGetCategories();
-          this.props.onClose();
-        } else {
-          this.setNotice('error', 'Cập nhật thất bại.');
-        }
-      })
-      .catch(() => this.setNotice('error', 'Lỗi kết nối khi cập nhật.'));
+    const p = axios.put('/api/admin/categories/' + id, cate, config).then((res) => {
+      if (!res.data) throw new Error('Cập nhật thất bại.');
+      this.apiGetCategories();
+      this.props.onClose();
+    });
+    notifyPromise(p, {
+      pending: 'Đang cập nhật danh mục…',
+      success: 'Đã cập nhật danh mục.',
+      error: 'Cập nhật danh mục thất bại.',
+    });
   }
 
   apiDeleteCategory(id) {
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
-      .delete('/api/admin/categories/' + id, config)
-      .then((res) => {
-        if (res.data) {
-          this.apiGetCategories();
-          this.props.onClose();
-        } else {
-          this.setNotice('error', 'Xoá thất bại (có thể đang được sử dụng).');
-        }
-      })
-      .catch(() => this.setNotice('error', 'Lỗi kết nối khi xoá.'));
+    const p = axios.delete('/api/admin/categories/' + id, config).then((res) => {
+      if (!res.data) throw new Error('Xoá thất bại (có thể đang được sử dụng).');
+      this.apiGetCategories();
+      this.props.onClose();
+    });
+    notifyPromise(p, {
+      pending: 'Đang xoá danh mục…',
+      success: 'Đã xoá danh mục.',
+      error: 'Xoá danh mục thất bại.',
+    });
   }
 
   render() {
@@ -200,6 +201,33 @@ class CategoryDetail extends Component {
               placeholder="VD: Laptop gaming"
               autoFocus={!isEdit}
             />
+          </div>
+          <div className="ad-form__group">
+            <label className="ad-form__label" htmlFor="ad-cat-slug">
+              Slug (URL cửa hàng)
+            </label>
+            <input
+              id="ad-cat-slug"
+              className="ad-form__input"
+              type="text"
+              value={this.state.txtSlug}
+              readOnly
+              disabled
+              placeholder={isEdit ? '' : 'Tự tạo khi lưu'}
+            />
+            <p
+              style={{
+                margin: '6px 0 0',
+                fontSize: '0.78rem',
+                color: 'var(--ad-muted)',
+                lineHeight: 1.4,
+              }}
+            >
+              Khách xem danh sách tại{' '}
+              <code style={{ fontSize: '0.8em' }}>
+                /product/category/{this.state.txtSlug || '…'}
+              </code>
+            </p>
           </div>
           <div className="ad-form__actions">
             {!isEdit ? (

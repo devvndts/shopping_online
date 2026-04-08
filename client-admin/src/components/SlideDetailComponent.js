@@ -2,18 +2,7 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
 import AdminModal from './AdminModal';
-import { notifyError, notifySuccess } from '../utils/notify';
-
-function stripBase64DataUrl(raw) {
-  if (!raw) return '';
-  return String(raw).replace(/^data:([^;]+);base64,/i, '');
-}
-
-function extractMime(raw) {
-  if (!raw) return '';
-  const m = String(raw).match(/^data:([^;]+);base64,/i);
-  return m ? m[1] : '';
-}
+import { notifyPromise, notifyWarning } from '../utils/notify';
 
 class SlideDetail extends Component {
   static contextType = MyContext;
@@ -28,8 +17,18 @@ class SlideDetail extends Component {
       txtSort: '0',
       chkActive: true,
       imgSlide: '',
+      slideImageFile: null,
+      manualImageUrl: '',
       notice: null,
     };
+    this._imgObjectUrl = null;
+  }
+
+  componentWillUnmount() {
+    if (this._imgObjectUrl) {
+      URL.revokeObjectURL(this._imgObjectUrl);
+      this._imgObjectUrl = null;
+    }
   }
 
   componentDidMount() {
@@ -44,7 +43,13 @@ class SlideDetail extends Component {
 
   syncFromProps() {
     const { item } = this.props;
+    if (this._imgObjectUrl) {
+      URL.revokeObjectURL(this._imgObjectUrl);
+      this._imgObjectUrl = null;
+    }
     if (item) {
+      const thumb = (item.thumbUrl || '').trim() || (item.imageUrl || '').trim();
+      const im = (item.imageUrl || '').trim();
       this.setState({
         txtID: item._id || '',
         txtTitle: item.title || '',
@@ -52,10 +57,9 @@ class SlideDetail extends Component {
         txtHref: item.href || '',
         txtSort: String(item.sort ?? 0),
         chkActive: item.active === 1,
-        imgSlide:
-          item.imageMime && item.imageData
-            ? `data:${item.imageMime};base64,${item.imageData}`
-            : '',
+        imgSlide: thumb,
+        slideImageFile: null,
+        manualImageUrl: /^https?:\/\//i.test(im) ? im : '',
         notice: null,
       });
     } else {
@@ -67,6 +71,8 @@ class SlideDetail extends Component {
         txtSort: '0',
         chkActive: true,
         imgSlide: '',
+        slideImageFile: null,
+        manualImageUrl: '',
         notice: null,
       });
     }
@@ -76,6 +82,21 @@ class SlideDetail extends Component {
     this.setState({ notice: type ? { type, text } : null });
   }
 
+  onManualImageUrlChange = (e) => {
+    const v = (e.target.value || '').trim();
+    if (this._imgObjectUrl) {
+      URL.revokeObjectURL(this._imgObjectUrl);
+      this._imgObjectUrl = null;
+    }
+    const show = /^https?:\/\//i.test(v) ? v : '';
+    this.setState({
+      manualImageUrl: e.target.value,
+      slideImageFile: null,
+      imgSlide: show,
+      notice: null,
+    });
+  };
+
   previewImage = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -83,16 +104,22 @@ class SlideDetail extends Component {
       this.setNotice('error', 'Vui lòng chọn file ảnh.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      this.setState({ imgSlide: evt.target.result, notice: null });
-    };
-    reader.readAsDataURL(file);
+    if (this._imgObjectUrl) {
+      URL.revokeObjectURL(this._imgObjectUrl);
+      this._imgObjectUrl = null;
+    }
+    this._imgObjectUrl = URL.createObjectURL(file);
+    this.setState({
+      imgSlide: this._imgObjectUrl,
+      slideImageFile: file,
+      manualImageUrl: '',
+      notice: null,
+    });
   };
 
   btnSave = (e) => {
     e.preventDefault();
-    const { onClose, onSaved } = this.props;
+    const { onClose, onSaved, item } = this.props;
     const isEdit = !!this.state.txtID;
 
     const title = (this.state.txtTitle || '').trim();
@@ -100,34 +127,50 @@ class SlideDetail extends Component {
     const href = (this.state.txtHref || '').trim();
     const sort = parseInt(this.state.txtSort, 10) || 0;
     const active = this.state.chkActive ? 1 : 0;
-    const imageMime = extractMime(this.state.imgSlide);
-    const imageData = stripBase64DataUrl(this.state.imgSlide);
+    const urlOpt = (this.state.manualImageUrl || '').trim();
+    const hasFile = !!this.state.slideImageFile;
+    const hasUrl = /^https?:\/\//i.test(urlOpt);
+    const hadImg = !!(
+      item &&
+      ((item.thumbUrl || '').trim() || (item.imageUrl || '').trim())
+    );
 
-    if (!imageMime || !imageData) {
-      this.setNotice('error', 'Vui lòng tải ảnh slide.');
+    if (!isEdit && !hasFile && !hasUrl) {
+      this.setNotice('error', 'Chọn file ảnh hoặc nhập URL https.');
+      notifyWarning('Chọn file ảnh hoặc nhập URL https.');
+      return;
+    }
+    if (isEdit && !hasFile && !hasUrl && !hadImg) {
+      this.setNotice('error', 'Slide cần có ảnh.');
+      notifyWarning('Slide cần có ảnh.');
       return;
     }
 
+    const fd = new FormData();
+    fd.append('title', title);
+    fd.append('subtitle', subtitle);
+    fd.append('href', href);
+    fd.append('sort', String(sort));
+    fd.append('active', String(active));
+    if (hasFile) {
+      fd.append('image', this.state.slideImageFile);
+    } else if (hasUrl) {
+      fd.append('imageUrl', urlOpt);
+    }
+
     const config = { headers: { 'x-access-token': this.context.token } };
-    const body = { title, subtitle, href, sort, active, imageMime, imageData };
-
-    const req = isEdit
-      ? axios.put('/api/admin/slides/' + this.state.txtID, body, config)
-      : axios.post('/api/admin/slides', body, config);
-
-    req
-      .then(() => {
-        notifySuccess(isEdit ? 'Đã lưu slide.' : 'Đã tạo slide.');
-        if (onSaved) onSaved();
-        if (onClose) onClose();
-      })
-      .catch((err) => {
-        const msg =
-          (err && err.response && err.response.data && err.response.data.message) ||
-          'Lưu slide thất bại.';
-        this.setNotice('error', msg);
-        notifyError(msg);
-      });
+    const req = (isEdit
+      ? axios.put('/api/admin/slides/' + this.state.txtID, fd, config)
+      : axios.post('/api/admin/slides', fd, config)
+    ).then(() => {
+      if (onSaved) onSaved();
+      if (onClose) onClose();
+    });
+    notifyPromise(req, {
+      pending: isEdit ? 'Đang lưu slide…' : 'Đang tạo slide & tải ảnh…',
+      success: isEdit ? 'Đã lưu slide.' : 'Đã tạo slide.',
+      error: 'Lưu slide thất bại.',
+    });
   };
 
   btnDelete = (e) => {
@@ -137,161 +180,116 @@ class SlideDetail extends Component {
     if (!id) return;
     if (!window.confirm('Xoá slide này?')) return;
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
-      .delete('/api/admin/slides/' + id, config)
-      .then(() => {
-        notifySuccess('Đã xoá slide.');
-        if (onSaved) onSaved();
-        if (onClose) onClose();
-      })
-      .catch(() => {
-        this.setNotice('error', 'Xoá slide thất bại.');
-        notifyError('Xoá slide thất bại.');
-      });
+    const p = axios.delete('/api/admin/slides/' + id, config).then(() => {
+      if (onSaved) onSaved();
+      if (onClose) onClose();
+    });
+    notifyPromise(p, {
+      pending: 'Đang xoá slide…',
+      success: 'Đã xoá slide.',
+      error: 'Xoá slide thất bại.',
+    });
   };
 
   render() {
-    const { open, onClose, item } = this.props;
-    const isEdit = !!item;
+    const { open, onClose } = this.props;
+    const { notice, imgSlide, txtID } = this.state;
 
     return (
       <AdminModal
-        isOpen={open}
-        title={isEdit ? 'Cập nhật slide' : 'Thêm slide'}
-        subtitle="Ảnh 1200×500 (khuyến nghị). Có thể dùng sort để sắp xếp."
+        isOpen={!!open}
+        title={this.state.txtID ? 'Sửa slide' : 'Thêm slide'}
+        subtitle="Ảnh: upload file hoặc URL https — lưu DB chỉ là link Firebase."
         onClose={onClose}
-        wide
       >
-        <form className="ad-form" onSubmit={this.btnSave}>
-          <div className="ad-form__grid">
-            <div className="ad-form__group">
-              <label className="ad-form__label" htmlFor="ad-slide-title">
-                Tiêu đề
-              </label>
-              <input
-                id="ad-slide-title"
-                className="ad-form__input"
-                type="text"
-                value={this.state.txtTitle}
-                onChange={(e) =>
-                  this.setState({ txtTitle: e.target.value, notice: null })
-                }
-              />
-            </div>
-            <div className="ad-form__group">
-              <label className="ad-form__label" htmlFor="ad-slide-sort">
-                Sort
-              </label>
-              <input
-                id="ad-slide-sort"
-                className="ad-form__input"
-                type="number"
-                value={this.state.txtSort}
-                onChange={(e) =>
-                  this.setState({ txtSort: e.target.value, notice: null })
-                }
-              />
-            </div>
-            <div className="ad-form__group ad-form__group--full">
-              <label className="ad-form__label" htmlFor="ad-slide-subtitle">
-                Mô tả
-              </label>
-              <input
-                id="ad-slide-subtitle"
-                className="ad-form__input"
-                type="text"
-                value={this.state.txtSubtitle}
-                onChange={(e) =>
-                  this.setState({ txtSubtitle: e.target.value, notice: null })
-                }
-              />
-            </div>
-            <div className="ad-form__group ad-form__group--full">
-              <label className="ad-form__label" htmlFor="ad-slide-href">
-                Link (tuỳ chọn)
-              </label>
-              <input
-                id="ad-slide-href"
-                className="ad-form__input"
-                type="text"
-                placeholder="/product/search/gaming hoặc https://..."
-                value={this.state.txtHref}
-                onChange={(e) =>
-                  this.setState({ txtHref: e.target.value, notice: null })
-                }
-              />
-            </div>
-            <div className="ad-form__group">
-              <label className="ad-form__label" htmlFor="ad-slide-active">
-                Hiển thị
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <input
-                  id="ad-slide-active"
-                  type="checkbox"
-                  checked={this.state.chkActive}
-                  onChange={(e) =>
-                    this.setState({ chkActive: e.target.checked, notice: null })
-                  }
-                />
-                Active
-              </label>
-            </div>
-            <div className="ad-form__group">
-              <label className="ad-form__label" htmlFor="ad-slide-img">
-                Ảnh
-              </label>
-              <input
-                id="ad-slide-img"
-                className="ad-form__file"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={this.previewImage}
-              />
-            </div>
+        {notice ? (
+          <div
+            className={notice.type === 'error' ? 'ad-alert ad-alert--error' : 'ad-alert ad-alert--success'}
+            role="status"
+          >
+            {notice.text}
           </div>
+        ) : null}
 
-          {this.state.imgSlide ? (
-            <img
-              className="ad-preview-img"
-              src={this.state.imgSlide}
-              alt="Xem trước slide"
-              style={{ aspectRatio: '12 / 5', objectFit: 'cover' }}
+        <form onSubmit={(e) => e.preventDefault()}>
+          <div className="ad-form__group">
+            <label className="ad-form__label">Tiêu đề</label>
+            <input
+              className="ad-form__input"
+              value={this.state.txtTitle}
+              onChange={(e) => this.setState({ txtTitle: e.target.value })}
             />
-          ) : null}
-
-          {this.state.notice ? (
-            <div
-              style={{
-                marginTop: 12,
-                padding: '10px 12px',
-                borderRadius: 12,
-                background:
-                  this.state.notice.type === 'error'
-                    ? 'rgba(220,38,38,0.10)'
-                    : 'rgba(22,163,74,0.10)',
-                border:
-                  this.state.notice.type === 'error'
-                    ? '1px solid rgba(220,38,38,0.25)'
-                    : '1px solid rgba(22,163,74,0.25)',
-                color: this.state.notice.type === 'error' ? '#991b1b' : '#166534',
-                fontSize: '0.92rem',
-              }}
-            >
-              {this.state.notice.text}
+          </div>
+          <div className="ad-form__group">
+            <label className="ad-form__label">Phụ đề</label>
+            <input
+              className="ad-form__input"
+              value={this.state.txtSubtitle}
+              onChange={(e) => this.setState({ txtSubtitle: e.target.value })}
+            />
+          </div>
+          <div className="ad-form__group">
+            <label className="ad-form__label">Link (pathname hoặc https)</label>
+            <input
+              className="ad-form__input"
+              value={this.state.txtHref}
+              onChange={(e) => this.setState({ txtHref: e.target.value })}
+            />
+          </div>
+          <div className="ad-form__group">
+            <label className="ad-form__label">Sort</label>
+            <input
+              className="ad-form__input"
+              type="number"
+              value={this.state.txtSort}
+              onChange={(e) => this.setState({ txtSort: e.target.value })}
+            />
+          </div>
+          <div className="ad-form__group">
+            <label>
+              <input
+                type="checkbox"
+                checked={this.state.chkActive}
+                onChange={(e) => this.setState({ chkActive: e.target.checked })}
+              />{' '}
+              Hiển thị
+            </label>
+          </div>
+          <div className="ad-form__group">
+            <label className="ad-form__label">Ảnh slide</label>
+            <input
+              className="ad-form__file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={this.previewImage}
+            />
+            <label className="ad-form__label" style={{ marginTop: 10 }}>
+              Hoặc URL https
+            </label>
+            <input
+              className="ad-form__input"
+              type="url"
+              value={this.state.manualImageUrl}
+              onChange={this.onManualImageUrlChange}
+              placeholder="https://"
+            />
+          </div>
+          {imgSlide ? (
+            <div style={{ marginTop: 12 }}>
+              <img
+                src={imgSlide}
+                alt=""
+                style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 8 }}
+              />
             </div>
           ) : null}
 
-          <div className="ad-form__actions">
-            <button type="submit" className="ad-btn ad-btn--primary">
-              {isEdit ? 'Lưu' : 'Thêm'}
+          <div className="ad-form__actions" style={{ marginTop: 18 }}>
+            <button type="button" className="ad-btn ad-btn--primary" onClick={this.btnSave}>
+              Lưu
             </button>
-            {isEdit ? (
-              <button
-                type="button"
-                className="ad-btn ad-btn--danger"
-                onClick={this.btnDelete}
-              >
+            {txtID ? (
+              <button type="button" className="ad-btn ad-btn--danger" onClick={this.btnDelete}>
                 Xoá
               </button>
             ) : null}
@@ -306,4 +304,3 @@ class SlideDetail extends Component {
 }
 
 export default SlideDetail;
-

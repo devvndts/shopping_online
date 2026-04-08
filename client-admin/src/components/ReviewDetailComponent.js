@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
-import { notifyError, notifySuccess, notifyWarning } from '../utils/notify';
+import { notifyPromise, notifyWarning } from '../utils/notify';
 import AdminModal from './AdminModal';
 
 function clampStars(n) {
@@ -136,27 +136,25 @@ class ReviewDetail extends Component {
     if (!payload) return;
     const config = { headers: { 'x-access-token': this.context.token } };
     if (this.props.mode === 'edit') {
-      axios
+      const p = axios
         .put('/api/admin/reviews/' + this.state.txtID, payload, config)
         .then(() => {
-          notifySuccess('Đã cập nhật đánh giá.');
           this.props.onClose();
-        })
-        .catch(() => {
-          notifyError('Cập nhật thất bại.');
-          this.setNotice('error', 'Cập nhật thất bại.');
         });
+      notifyPromise(p, {
+        pending: 'Đang cập nhật đánh giá…',
+        success: 'Đã cập nhật đánh giá.',
+        error: 'Cập nhật đánh giá thất bại.',
+      });
     } else {
-      axios
-        .post('/api/admin/reviews', payload, config)
-        .then(() => {
-          notifySuccess('Đã thêm đánh giá.');
-          this.props.onClose();
-        })
-        .catch(() => {
-          notifyError('Thêm đánh giá thất bại.');
-          this.setNotice('error', 'Thêm đánh giá thất bại.');
-        });
+      const p = axios.post('/api/admin/reviews', payload, config).then(() => {
+        this.props.onClose();
+      });
+      notifyPromise(p, {
+        pending: 'Đang thêm đánh giá…',
+        success: 'Đã thêm đánh giá.',
+        error: 'Thêm đánh giá thất bại.',
+      });
     }
   };
 

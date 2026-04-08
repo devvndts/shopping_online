@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
 import AdminModal from './AdminModal';
+import { notifyPromise } from '../utils/notify';
 
 class CustomerDetail extends Component {
   static contextType = MyContext;
@@ -70,12 +71,6 @@ class CustomerDetail extends Component {
     });
   }
 
-  errMessage(err, fallback) {
-    const d = err.response && err.response.data;
-    if (d && d.message) return d.message;
-    return fallback;
-  }
-
   btnAddClick(e) {
     e.preventDefault();
     const username = (this.state.txtUsername || '').trim();
@@ -89,7 +84,7 @@ class CustomerDetail extends Component {
     }
     this.setNotice(null);
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
+    const p = axios
       .post(
         '/api/admin/customers',
         {
@@ -103,19 +98,15 @@ class CustomerDetail extends Component {
         config
       )
       .then((res) => {
-        if (res.data && res.data._id) {
-          this.apiGetCustomers();
-          this.props.onClose();
-        } else {
-          this.setNotice('error', 'Thêm khách hàng thất bại.');
-        }
-      })
-      .catch((err) =>
-        this.setNotice(
-          'error',
-          this.errMessage(err, 'Lỗi kết nối khi thêm khách hàng.')
-        )
-      );
+        if (!(res.data && res.data._id)) throw new Error('Thêm khách hàng thất bại.');
+        this.apiGetCustomers();
+        this.props.onClose();
+      });
+    notifyPromise(p, {
+      pending: 'Đang thêm khách hàng…',
+      success: 'Đã thêm khách hàng.',
+      error: 'Thêm khách hàng thất bại.',
+    });
   }
 
   btnUpdateClick(e) {
@@ -141,22 +132,16 @@ class CustomerDetail extends Component {
     const pwd = (this.state.txtPassword || '').trim();
     if (pwd) body.password = pwd;
 
-    axios
-      .put('/api/admin/customers/' + id, body, config)
-      .then((res) => {
-        if (res.data && res.data._id) {
-          this.apiGetCustomers();
-          this.props.onClose();
-        } else {
-          this.setNotice('error', 'Cập nhật thất bại.');
-        }
-      })
-      .catch((err) =>
-        this.setNotice(
-          'error',
-          this.errMessage(err, 'Lỗi kết nối khi cập nhật.')
-        )
-      );
+    const p = axios.put('/api/admin/customers/' + id, body, config).then((res) => {
+      if (!(res.data && res.data._id)) throw new Error('Cập nhật thất bại.');
+      this.apiGetCustomers();
+      this.props.onClose();
+    });
+    notifyPromise(p, {
+      pending: 'Đang cập nhật khách hàng…',
+      success: 'Đã cập nhật khách hàng.',
+      error: 'Cập nhật khách hàng thất bại.',
+    });
   }
 
   btnDeleteClick(e) {
@@ -175,19 +160,16 @@ class CustomerDetail extends Component {
     }
     this.setNotice(null);
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
-      .delete('/api/admin/customers/' + id, config)
-      .then((res) => {
-        if (res.data && res.data._id) {
-          this.apiGetCustomers();
-          this.props.onClose();
-        } else {
-          this.setNotice('error', 'Xoá thất bại.');
-        }
-      })
-      .catch((err) =>
-        this.setNotice('error', this.errMessage(err, 'Lỗi kết nối khi xoá.'))
-      );
+    const p = axios.delete('/api/admin/customers/' + id, config).then((res) => {
+      if (!(res.data && res.data._id)) throw new Error('Xoá thất bại.');
+      this.apiGetCustomers();
+      this.props.onClose();
+    });
+    notifyPromise(p, {
+      pending: 'Đang xoá khách hàng…',
+      success: 'Đã xoá khách hàng.',
+      error: 'Xoá khách hàng thất bại.',
+    });
   }
 
   render() {

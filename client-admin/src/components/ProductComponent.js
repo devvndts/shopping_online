@@ -3,6 +3,8 @@ import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
 import ProductDetail from './ProductDetailComponent';
 import { formatVnd } from '../utils/formatVnd';
+import { customerProductPath } from '../utils/customerProductPath';
+import { productImageSrc } from '../utils/productImageSrc';
 
 class Product extends Component {
   static contextType = MyContext;
@@ -97,6 +99,7 @@ class Product extends Component {
                   <tr>
                     <th>ID</th>
                     <th>Tên</th>
+                    <th>Brand</th>
                     <th>Giá</th>
                     <th>Ngày tạo</th>
                     <th>Danh mục</th>
@@ -118,6 +121,7 @@ class Product extends Component {
                         {item._id}
                       </td>
                       <td>{item.name}</td>
+                      <td>{item.brand || '—'}</td>
                       <td>{formatVnd(item.price)}</td>
                       <td>
                         {item.cdate
@@ -129,11 +133,30 @@ class Product extends Component {
                           ? item.category.name
                           : '—'}
                       </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div style={{ fontSize: '0.8rem', lineHeight: 1.35 }}>
+                          {item.slug ? (
+                            <code title={item.slug}>{item.slug}</code>
+                          ) : (
+                            <span style={{ color: 'var(--ad-muted)' }}>—</span>
+                          )}
+                          <div style={{ marginTop: 6 }}>
+                            <a
+                              href={customerProductPath(item)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ad-table__ext-link"
+                            >
+                              Mở trên cửa hàng
+                            </a>
+                          </div>
+                        </div>
+                      </td>
                       <td>
                         {item.image ? (
                           <img
                             className="ad-table__thumb"
-                            src={'data:image/jpg;base64,' + item.image}
+                            src={productImageSrc(item.image)}
                             alt=""
                           />
                         ) : (

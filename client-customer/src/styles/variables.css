@@ -45,3 +45,16 @@
   --cc-footer-social-bg: #ececec;
 }
 
+@media (max-width: 640px) {
+  :root {
+    --cc-page-padding-x: 12px;
+    --cc-radius-shell: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --cc-page-padding-x: 10px;
+  }
+}
+

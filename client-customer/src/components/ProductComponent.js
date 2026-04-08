@@ -113,7 +113,9 @@ class Product extends Component {
 
   apiGetProductsByCatID(cid) {
     this.setState({ products: [], categoryName: null });
-    axios.get('/api/customer/products/category/' + cid).then((res) => {
+    axios
+      .get('/api/customer/products/category/' + encodeURIComponent(cid))
+      .then((res) => {
       const result = res.data || [];
       let categoryName = null;
       if (
@@ -127,7 +129,11 @@ class Product extends Component {
       if (!categoryName) {
         axios.get('/api/customer/categories').then((r) => {
           const cats = r.data || [];
-          const c = cats.find((x) => String(x._id) === String(cid));
+          const c = cats.find(
+            (x) =>
+              String(x._id) === String(cid) ||
+              (x.slug != null && String(x.slug) === String(cid))
+          );
           if (c && c.name) {
             this.setState({ categoryName: c.name });
           }

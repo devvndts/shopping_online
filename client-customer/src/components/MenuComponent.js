@@ -5,7 +5,13 @@ import { Link } from "react-router-dom";
 import withRouter from '../utils/withRouter';
 import Inform from "./InformComponent";
 import { formatVnd } from "../utils/formatVnd";
+import { productPath } from "../utils/productPath";
+import { categoryPath } from "../utils/categoryPath";
+import { productImageSrc } from "../utils/productImageSrc";
+import MyContext from "../contexts/MyContext";
+
 class Menu extends Component {
+  static contextType = MyContext;
   constructor(props) {
     super(props);
     this.state = {
@@ -15,6 +21,7 @@ class Menu extends Component {
       suggestLoading: false,
       suggestions: [],
       siteLogo: "",
+      mobileNavOpen: false,
     };
     this.searchRootRef = React.createRef();
     this.suggestTimer = null;
@@ -26,27 +33,85 @@ class Menu extends Component {
     this.apiGetSiteLogo();
     document.addEventListener("mousedown", this.onDocMouseDown);
     document.addEventListener("keydown", this.onDocKeyDown);
+    window.addEventListener("resize", this.onWinResize);
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.mobileNavOpen !== this.state.mobileNavOpen) {
+      document.body.style.overflow = this.state.mobileNavOpen ? "hidden" : "";
+    }
   }
 
   componentWillUnmount() {
     document.removeEventListener("mousedown", this.onDocMouseDown);
     document.removeEventListener("keydown", this.onDocKeyDown);
+    window.removeEventListener("resize", this.onWinResize);
+    document.body.style.overflow = "";
     if (this.suggestTimer) clearTimeout(this.suggestTimer);
     if (this.abortController) this.abortController.abort();
   }
+
+  onWinResize = () => {
+    if (typeof window !== "undefined" && window.innerWidth > 1024 && this.state.mobileNavOpen) {
+      this.setState({ mobileNavOpen: false });
+    }
+  };
+
+  closeMobileNav = () => {
+    this.setState({ mobileNavOpen: false });
+  };
+
+  toggleMobileNav = () => {
+    this.setState((s) => ({ mobileNavOpen: !s.mobileNavOpen }));
+  };
 
   render() {
     const cates = this.state.categories.map((item) => {
       return (
         <li key={item._id} className="site-header__cat-item">
-          <Link to={"/product/category/" + item._id}>{item.name}</Link>
+          <Link to={categoryPath(item)}>{item.name}</Link>
         </li>
       );
     });
 
+    const mobileCates = this.state.categories.map((item) => {
+      return (
+        <li key={"m-" + item._id} className="cc-mobile-nav__item">
+          <Link
+            to={categoryPath(item)}
+            className="cc-mobile-nav__link"
+            onClick={this.closeMobileNav}
+          >
+            {item.name}
+          </Link>
+        </li>
+      );
+    });
+
+    const { mobileNavOpen } = this.state;
+
     return (
       <header className="site-header">
         <div className="site-header__top">
+          <button
+            type="button"
+            className="site-header__menu-btn"
+            onClick={this.toggleMobileNav}
+            aria-label={mobileNavOpen ? "Đóng menu" : "Mở menu danh mục"}
+            aria-expanded={mobileNavOpen ? "true" : "false"}
+            aria-controls="cc-mobile-nav-panel"
+          >
+            <span
+              className={
+                "site-header__menu-icon" +
+                (mobileNavOpen ? " site-header__menu-icon--open" : "")
+              }
+              aria-hidden="true"
+            >
+              <span />
+            </span>
+          </button>
+
           <div className="site-header__brand">
             <Link to="/home">
               <img
@@ -76,7 +141,12 @@ class Menu extends Component {
                     }
                   }}
                 />
-                <input type="submit" value="Tìm kiếm" />
+                <input
+                  type="submit"
+                  className="cc-search__submit"
+                  value="Tìm kiếm"
+                  aria-label="Tìm kiếm"
+                />
               </form>
               {this.state.suggestOpen ? (
                 <div
@@ -108,7 +178,7 @@ class Menu extends Component {
                       <span className="cc-search__thumb">
                         {p.image ? (
                           <img
-                            src={"data:image/jpg;base64," + p.image}
+                            src={productImageSrc(p.image)}
                             alt=""
                             loading="lazy"
                           />
@@ -132,11 +202,83 @@ class Menu extends Component {
           </div>
         </div>
 
-        <nav className="site-header__categories" aria-label="Danh mục sản phẩm">
-          <ul className="site-header__cat-list">
-            {cates}
-          </ul>
+        <nav
+          className="site-header__categories site-header__categories--desktop"
+          aria-label="Danh mục sản phẩm"
+        >
+          <ul className="site-header__cat-list">{cates}</ul>
         </nav>
+
+        {mobileNavOpen ? (
+          <div
+            className="cc-mobile-nav"
+            id="cc-mobile-nav-root"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cc-mobile-nav-title"
+          >
+            <button
+              type="button"
+              className="cc-mobile-nav__backdrop"
+              aria-label="Đóng menu"
+              onClick={this.closeMobileNav}
+            />
+            <div
+              className="cc-mobile-nav__panel"
+              id="cc-mobile-nav-panel"
+            >
+              <div className="cc-mobile-nav__head">
+                <h2 id="cc-mobile-nav-title" className="cc-mobile-nav__title">
+                  Danh mục
+                </h2>
+                <button
+                  type="button"
+                  className="cc-mobile-nav__close"
+                  onClick={this.closeMobileNav}
+                  aria-label="Đóng"
+                >
+                  ×
+                </button>
+              </div>
+              <nav className="cc-mobile-nav__body" aria-label="Danh mục sản phẩm">
+                <ul className="cc-mobile-nav__list">{mobileCates}</ul>
+              </nav>
+              <div className="cc-mobile-nav__quick">
+                <Link
+                  to="/home"
+                  className="cc-mobile-nav__quick-link"
+                  onClick={this.closeMobileNav}
+                >
+                  Trang chủ
+                </Link>
+                <Link
+                  to="/mycart"
+                  className="cc-mobile-nav__quick-link"
+                  onClick={this.closeMobileNav}
+                >
+                  Giỏ hàng
+                </Link>
+                {this.context.token === "" ? (
+                  <Link
+                    to="/login"
+                    className="cc-mobile-nav__quick-link"
+                    onClick={this.closeMobileNav}
+                  >
+                    Đăng nhập
+                  </Link>
+                ) : (
+                  <Link
+                    to="/myorders"
+                    className="cc-mobile-nav__quick-link"
+                    onClick={this.closeMobileNav}
+                  >
+                    Đơn hàng
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </header>
     );
   }
@@ -146,8 +288,9 @@ class Menu extends Component {
       .get("/api/customer/settings/site-logo")
       .then((res) => {
         const row = res.data || {};
-        if (row && row.mime && row.data) {
-          this.setState({ siteLogo: `data:${row.mime};base64,${row.data}` });
+        const u = (row.imageUrl || "").trim();
+        if (u) {
+          this.setState({ siteLogo: u });
         } else {
           this.setState({ siteLogo: "" });
         }
@@ -173,7 +316,12 @@ class Menu extends Component {
   };
 
   onDocKeyDown = (e) => {
-    if (e.key === "Escape" && this.state.suggestOpen) {
+    if (e.key !== "Escape") return;
+    if (this.state.mobileNavOpen) {
+      this.setState({ mobileNavOpen: false });
+      return;
+    }
+    if (this.state.suggestOpen) {
       this.setState({ suggestOpen: false });
     }
   };
@@ -227,7 +375,7 @@ class Menu extends Component {
   onPickSuggestion(p) {
     if (!p || !p._id) return;
     this.setState({ suggestOpen: false });
-    this.props.navigate("/product/" + p._id);
+    this.props.navigate(productPath(p));
   }
 }
 export default withRouter(Menu);

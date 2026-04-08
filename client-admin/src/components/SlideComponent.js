@@ -78,9 +78,9 @@ class Slide extends Component {
                         style={{ cursor: 'pointer' }}
                       >
                         <td>
-                          {s.imageMime && s.imageData ? (
+                          {(s.thumbUrl || '').trim() ? (
                             <img
-                              src={`data:${s.imageMime};base64,${s.imageData}`}
+                              src={s.thumbUrl}
                               alt=""
                               style={{
                                 width: 120,

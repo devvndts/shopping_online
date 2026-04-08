@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { formatVnd } from '../utils/formatVnd';
+import { productImageSrc } from '../utils/productImageSrc';
+import { productPath } from '../utils/productPath';
 
 function ProductCard({ item, badge, showCategoryMeta }) {
   const catName =
@@ -20,20 +22,23 @@ function ProductCard({ item, badge, showCategoryMeta }) {
   return (
     <div className="cc-product-card">
       {badge ? <span className={badgeClass}>{badgeLabel}</span> : null}
-      <Link to={'/product/' + item._id} className="cc-product-card__img-wrap">
+      <Link to={productPath(item)} className="cc-product-card__img-wrap">
         <img
           className="cc-product-card__img"
-          src={'data:image/jpg;base64,' + item.image}
+          src={productImageSrc(item.image)}
           alt={item.name}
         />
       </Link>
       <div className="cc-product-card__body">
         <h3 className="cc-product-card__name">{item.name}</h3>
+        {item.brand ? (
+          <p className="cc-product-card__brand">{item.brand}</p>
+        ) : null}
         {showCategoryMeta && catName ? (
           <p className="cc-product-card__meta">{catName}</p>
         ) : null}
         <p className="cc-product-card__price">{formatVnd(item.price)}</p>
-        <Link to={'/product/' + item._id} className="cc-product-card__btn">
+        <Link to={productPath(item)} className="cc-product-card__btn">
           Xem chi tiết
         </Link>
       </div>

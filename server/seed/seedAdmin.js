@@ -1,3 +1,4 @@
+require('../loadEnv');
 /**
  * Chạy: từ thư mục server — npm run seed:admin
  * Tạo admin nếu chưa có, hoặc ghi đè mật khẩu về giá trị mặc định.

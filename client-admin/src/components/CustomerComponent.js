@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
 import CustomerDetail from './CustomerDetailComponent';
+import { notifyPromise } from '../utils/notify';
 
 class Customer extends Component {
   static contextType = MyContext;
@@ -52,18 +53,21 @@ class Customer extends Component {
     const isOn = item.active === 1 || item.active === true;
     const next = isOn ? 0 : 1;
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
+    const p = axios
       .patch(`/api/admin/customers/${item._id}/active`, { active: next }, config)
       .then((res) => {
-        if (res.data && res.data._id) {
-          this.setState((s) => ({
-            customers: s.customers.map((c) =>
-              c._id === res.data._id ? { ...c, ...res.data } : c
-            ),
-          }));
-        }
-      })
-      .catch(() => {});
+        if (!(res.data && res.data._id)) throw new Error('Cập nhật thất bại.');
+        this.setState((s) => ({
+          customers: s.customers.map((c) =>
+            c._id === res.data._id ? { ...c, ...res.data } : c
+          ),
+        }));
+      });
+    notifyPromise(p, {
+      pending: 'Đang cập nhật trạng thái…',
+      success: next ? 'Đã bật kích hoạt.' : 'Đã tắt kích hoạt.',
+      error: 'Cập nhật trạng thái khách hàng thất bại.',
+    });
   };
 
   render() {

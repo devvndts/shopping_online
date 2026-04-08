@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
 import ProductCard from './ProductCard';
+import { categoryPath } from '../utils/categoryPath';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
@@ -86,28 +87,21 @@ class Home extends Component {
                       {String(block.category.name || '').toUpperCase()}
                     </h3>
                     <Link
-                      to={'/product/category/' + block.category._id}
+                      to={categoryPath(block.category)}
                       className="cc-category-block__link"
                     >
                       Xem tất cả
                     </Link>
                   </div>
-                  <Swiper
-                    className="cc-category-swiper"
-                    modules={[Navigation, Pagination]}
-                    spaceBetween={20}
-                    slidesPerView={1.15}
-                    watchOverflow={true}
-                    navigation={true}
-                    pagination={{ clickable: true }}
-                    breakpoints={HOME_SWIPER_BREAKPOINTS}
-                  >
-                    {block.products.map((item) => (
-                      <SwiperSlide key={item._id}>
-                        <ProductCard item={item} showCategoryMeta={false} />
-                      </SwiperSlide>
+                  <div className="cc-category-grid">
+                    {block.products.slice(0, 8).map((item) => (
+                      <ProductCard
+                        key={item._id}
+                        item={item}
+                        showCategoryMeta={false}
+                      />
                     ))}
-                  </Swiper>
+                  </div>
                 </section>
               ))}
             </div>
@@ -186,9 +180,13 @@ class Home extends Component {
       Promise.all(
         cats.map((c) =>
           axios
-            .get('/api/customer/products/category/' + c._id, {
-              params: { limit: 8 }
-            })
+            .get(
+              '/api/customer/products/category/' +
+                encodeURIComponent(c.slug || c._id),
+              {
+                params: { limit: 8 },
+              }
+            )
             .then((r) => ({ category: c, products: r.data || [] }))
         )
       ).then((blocks) => {

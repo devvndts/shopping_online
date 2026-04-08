@@ -639,6 +639,17 @@
   text-overflow: ellipsis;
 }
 
+.ad-table__ext-link {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ad-accent);
+  text-decoration: none;
+}
+
+.ad-table__ext-link:hover {
+  text-decoration: underline;
+}
+
 .ad-table__thumb {
   width: 52px;
   height: 52px;
@@ -896,6 +907,50 @@
   max-width: min(560px, 100%);
 }
 
+.ad-modal-panel--xl {
+  max-width: min(960px, 100%);
+}
+
+/* Form sản phẩm — hai cột trong modal rộng */
+.ad-prod-form-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px 28px;
+  align-items: start;
+}
+
+@media (min-width: 720px) {
+  .ad-prod-form-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ad-prod-form-layout__col {
+  min-width: 0;
+}
+
+.ad-prod-form-layout__col--secondary .ad-form__textarea {
+  min-height: 160px;
+}
+
+.ad-brand-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+  margin-top: 8px;
+}
+
+.ad-brand-quick .ad-form__input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.ad-brand-quick .ad-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 @keyframes ad-modal-pop {
   from {
     opacity: 0;
@@ -967,4 +1022,8 @@
 
 .ad-modal-panel__body .ad-preview-img {
   max-height: 180px;
+}
+
+.ad-modal-panel--xl .ad-modal-panel__body .ad-preview-img {
+  max-height: 280px;
 }

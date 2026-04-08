@@ -10,6 +10,7 @@ export default function AdminModal({
   onClose,
   children,
   wide,
+  extraWide,
 }) {
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -35,7 +36,8 @@ export default function AdminModal({
     >
       <div
         className={
-          'ad-modal-panel' + (wide ? ' ad-modal-panel--wide' : '')
+          'ad-modal-panel' +
+          (extraWide ? ' ad-modal-panel--xl' : wide ? ' ad-modal-panel--wide' : '')
         }
         role="dialog"
         aria-modal="true"

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import MyContext from '../contexts/MyContext';
 import CartUtil from '../utils/CartUtil';
 import { formatVnd } from '../utils/formatVnd';
+import { productPath } from '../utils/productPath';
+import { productImageSrc } from '../utils/productImageSrc';
 import axios from 'axios';
 import withRouter from '../utils/withRouter';
 import { notifyError, notifySuccess, notifyWarning } from '../utils/notify';
@@ -136,19 +138,19 @@ class Mycart extends Component {
                         role="listitem"
                       >
                         <Link
-                          to={'/product/' + p._id}
+                          to={productPath(p)}
                           className="cc-cart__line-img-wrap"
                         >
                           <img
                             className="cc-cart__line-img"
-                            src={'data:image/jpg;base64,' + p.image}
+                            src={productImageSrc(p.image)}
                             alt={p.name}
                           />
                         </Link>
                         <div className="cc-cart__line-body">
                           <div className="cc-cart__line-main">
                             <Link
-                              to={'/product/' + p._id}
+                              to={productPath(p)}
                               className="cc-cart__line-name"
                             >
                               {p.name}
@@ -250,38 +252,38 @@ class Mycart extends Component {
 
         {this.state.showCheckoutConfirm && (
           <div
-            className="cc-modal-backdrop"
+            className="cc-checkout-backdrop"
             role="presentation"
             onClick={() => this.setState({ showCheckoutConfirm: false })}
           >
             <div
-              className="cc-modal"
+              className="cc-checkout-panel"
               role="dialog"
               aria-modal="true"
               aria-labelledby="cc-checkout-title"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 id="cc-checkout-title" className="cc-modal__title">
+              <h3 id="cc-checkout-title" className="cc-checkout__title">
                 Xác nhận đặt hàng?
               </h3>
-              <p className="cc-modal__text">
+              <p className="cc-checkout__text">
                 Bạn sắp hoàn tất đơn với số tiền dưới đây. Vui lòng kiểm tra lại
                 sản phẩm và số lượng trước khi xác nhận.
               </p>
-              <div className="cc-modal__total">
+              <div className="cc-checkout__total">
                 Tổng thanh toán: {formatVnd(CartUtil.getTotal(lines))}
               </div>
-              <div className="cc-modal__actions">
+              <div className="cc-checkout__actions">
                 <button
                   type="button"
-                  className="cc-modal__btn cc-modal__btn--ghost"
+                  className="cc-checkout__btn cc-checkout__btn--ghost"
                   onClick={() => this.setState({ showCheckoutConfirm: false })}
                 >
                   Hủy
                 </button>
                 <button
                   type="button"
-                  className="cc-modal__btn cc-modal__btn--primary"
+                  className="cc-checkout__btn cc-checkout__btn--primary"
                   onClick={() => this.confirmCheckout()}
                 >
                   Đặt hàng

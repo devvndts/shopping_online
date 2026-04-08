@@ -1,8 +1,9 @@
 import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
-import { notifyError, notifySuccess } from '../utils/notify';
+import { notifyPromise } from '../utils/notify';
 import { formatVnd } from '../utils/formatVnd';
+import { customerProductPath } from '../utils/customerProductPath';
 import { FiBox, FiClock, FiDollarSign } from 'react-icons/fi';
 
 class Order extends Component {
@@ -47,18 +48,20 @@ class Order extends Component {
 
   setStatus = (id, status) => {
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
+    const p = axios
       .patch('/api/admin/orders/' + id + '/status', { status }, config)
       .then((res) => {
-        if (res.data && res.data.success) {
-          notifySuccess('Đã cập nhật trạng thái đơn.');
-          this.apiGetOrders();
-          this.apiGetSummary();
-        } else {
-          notifyError((res.data && res.data.message) || 'Cập nhật thất bại.');
+        if (!(res.data && res.data.success)) {
+          throw new Error((res.data && res.data.message) || 'Cập nhật thất bại.');
         }
-      })
-      .catch(() => notifyError('Cập nhật thất bại.'));
+        this.apiGetOrders();
+        this.apiGetSummary();
+      });
+    notifyPromise(p, {
+      pending: 'Đang cập nhật trạng thái đơn…',
+      success: 'Đã cập nhật trạng thái đơn.',
+      error: 'Cập nhật trạng thái đơn thất bại.',
+    });
   };
 
   toggleExpand = (id) => {
@@ -205,9 +208,21 @@ class Order extends Component {
                                   >
                                     {item.items.map((line, idx) => (
                                       <li key={idx}>
-                                        {line.product && line.product.name
-                                          ? line.product.name
-                                          : 'Sản phẩm'}{' '}
+                                        {line.product && line.product._id ? (
+                                          <a
+                                            href={customerProductPath(
+                                              line.product
+                                            )}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                          >
+                                            {line.product.name || 'Sản phẩm'}
+                                          </a>
+                                        ) : line.product && line.product.name ? (
+                                          line.product.name
+                                        ) : (
+                                          'Sản phẩm'
+                                        )}{' '}
                                         × {line.quantity}
                                         {line.product && line.product.price != null
                                           ? ` — ${line.product.price * line.quantity}`

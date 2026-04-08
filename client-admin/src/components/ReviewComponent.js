@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { Component } from 'react';
 import MyContext from '../contexts/MyContext';
-import { notifyError, notifySuccess } from '../utils/notify';
+import { notifyError, notifyPromise } from '../utils/notify';
 import ReviewDetail from './ReviewDetailComponent';
 
 function starsText(n) {
@@ -54,13 +54,16 @@ class Review extends Component {
   toggleActive = (item) => {
     const config = { headers: { 'x-access-token': this.context.token } };
     const next = item.active === 1 ? 0 : 1;
-    axios
+    const p = axios
       .patch('/api/admin/reviews/' + item._id + '/active', { active: next }, config)
       .then(() => {
-        notifySuccess(next ? 'Đã bật hiển thị.' : 'Đã tắt hiển thị.');
         this.apiLoad();
-      })
-      .catch(() => notifyError('Cập nhật trạng thái thất bại.'));
+      });
+    notifyPromise(p, {
+      pending: 'Đang cập nhật trạng thái…',
+      success: next ? 'Đã bật hiển thị.' : 'Đã tắt hiển thị.',
+      error: 'Cập nhật trạng thái thất bại.',
+    });
   };
 
   deleteItem = (item) => {
@@ -68,13 +71,14 @@ class Review extends Component {
     const ok = confirm('Xoá đánh giá này?');
     if (!ok) return;
     const config = { headers: { 'x-access-token': this.context.token } };
-    axios
-      .delete('/api/admin/reviews/' + item._id, config)
-      .then(() => {
-        notifySuccess('Đã xoá đánh giá.');
-        this.apiLoad();
-      })
-      .catch(() => notifyError('Xoá thất bại.'));
+    const p = axios.delete('/api/admin/reviews/' + item._id, config).then(() => {
+      this.apiLoad();
+    });
+    notifyPromise(p, {
+      pending: 'Đang xoá đánh giá…',
+      success: 'Đã xoá đánh giá.',
+      error: 'Xoá đánh giá thất bại.',
+    });
   };
 
   render() {

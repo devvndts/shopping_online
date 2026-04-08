@@ -1,11 +1,33 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 
 const JwtUtil = require('../utils/JwtUtil');
 
 const AdminDAO = require('../models/AdminDAO');
 const CategoryDAO = require('../models/CategoryDAO');
+const BrandDAO = require('../models/BrandDAO');
 const ProductDAO = require('../models/ProductDAO');
+const { slugify } = require('../utils/slugify');
+const {
+  resolveProductImageForDb,
+  looksLikeHttpUrl,
+} = require('../utils/productImageField');
+const { isConfigured, uploadImageBuffer } = require('../utils/firebaseStorage');
+const { resolveGalleryFromRequest, MAX_GALLERY } = require('../utils/productGallery');
+
+const uploadImageMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+});
+
+const uploadProductImages = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+}).fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'gallery', maxCount: MAX_GALLERY },
+]);
 const CustomerDAO = require('../models/CustomerDAO');
 const OrderDAO = require('../models/OrderDAO');
 const SettingDAO = require('../models/SettingDAO');
@@ -60,20 +82,74 @@ router.get('/categories', JwtUtil.checkToken, async function (req, res) {
 });
 router.post('/categories', JwtUtil.checkToken, async function (req, res) {
   const name = req.body.name;
-  const category = { name: name };
+  const slugBase = slugify(name);
+  const slug = await CategoryDAO.ensureUniqueSlug(slugBase, null);
+  const category = { name: name, slug: slug };
   const result = await CategoryDAO.insert(category);
   res.json(result);
 });
 router.put('/categories/:id', JwtUtil.checkToken, async function (req, res) {
   const _id = req.params.id;
   const name = req.body.name;
-  const category = { _id: _id, name: name };
+  const slugBase = slugify(name);
+  const slug = await CategoryDAO.ensureUniqueSlug(slugBase, _id);
+  const category = { _id: _id, name: name, slug: slug };
   const result = await CategoryDAO.update(category);
   res.json(result);
 });
 router.delete('/categories/:id', JwtUtil.checkToken, async function (req, res) {
   const _id = req.params.id;
   const result = await CategoryDAO.delete(_id);
+  res.json(result);
+});
+
+router.get('/brands', JwtUtil.checkToken, async function (req, res) {
+  const brands = await BrandDAO.selectAll();
+  res.json(brands);
+});
+
+router.post('/brands', JwtUtil.checkToken, async function (req, res) {
+  const name = (req.body.name != null ? String(req.body.name) : '').trim();
+  if (!name) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng nhập tên thương hiệu.',
+    });
+  }
+  const dup = await BrandDAO.selectByName(name);
+  if (dup) {
+    return res.status(409).json({
+      success: false,
+      message: 'Thương hiệu này đã tồn tại.',
+    });
+  }
+  const result = await BrandDAO.insert({ name });
+  res.json(result);
+});
+
+router.put('/brands/:id', JwtUtil.checkToken, async function (req, res) {
+  const _id = req.params.id;
+  const name = (req.body.name != null ? String(req.body.name) : '').trim();
+  if (!name) {
+    return res.status(400).json({
+      success: false,
+      message: 'Vui lòng nhập tên thương hiệu.',
+    });
+  }
+  const existing = await BrandDAO.selectByName(name);
+  if (existing && String(existing._id) !== String(_id)) {
+    return res.status(409).json({
+      success: false,
+      message: 'Tên thương hiệu đã được dùng cho bản ghi khác.',
+    });
+  }
+  const result = await BrandDAO.update({ _id, name });
+  res.json(result);
+});
+
+router.delete('/brands/:id', JwtUtil.checkToken, async function (req, res) {
+  const _id = req.params.id;
+  const result = await BrandDAO.delete(_id);
   res.json(result);
 });
 
@@ -93,37 +169,120 @@ router.get('/products/all', JwtUtil.checkToken, async function (req, res) {
   const rows = await ProductDAO.selectAllMinimal();
   res.json(rows);
 });
-router.post('/products', JwtUtil.checkToken, async function (req, res) {
+router.post(
+  '/products',
+  JwtUtil.checkToken,
+  uploadProductImages,
+  async function (req, res) {
   const name = req.body.name;
   const price = req.body.price;
   const cid = req.body.category;
-  const image = req.body.image;
   const description = req.body.description || '';
+  const brand = (req.body.brand != null ? String(req.body.brand) : '').trim();
+  const imageUrl = (req.body.imageUrl != null ? String(req.body.imageUrl) : '').trim();
+  const mainFile = req.files && req.files.image && req.files.image[0];
+  let image;
+  let gallery;
+  try {
+    image = await resolveProductImageForDb({
+      fileBuffer: mainFile && mainFile.buffer,
+      fileMimetype: mainFile && mainFile.mimetype,
+      imageUrl,
+      previousImage: '',
+      isCreate: true,
+    });
+    gallery = await resolveGalleryFromRequest(req);
+  } catch (e) {
+    return res.status(400).json({
+      success: false,
+      message: e.message || 'Không xử lý được ảnh.',
+    });
+  }
+  if (!image) {
+    return res.status(400).json({
+      success: false,
+      message: 'Thiếu ảnh sản phẩm.',
+    });
+  }
   const now = new Date().getTime();
   const category = await CategoryDAO.selectByID(cid);
-  const product = { name: name, price: price, image: image, description: description, cdate: now, category: category };
+  const slugBase = slugify(name);
+  const slug = await ProductDAO.ensureUniqueSlug(slugBase, null);
+  const product = {
+    name: name,
+    brand: brand,
+    slug: slug,
+    price: price,
+    image: image,
+    gallery,
+    description: description,
+    cdate: now,
+    category: category,
+  };
   const result = await ProductDAO.insert(product);
   res.json(result);
 });
 
-router.put('/products/:id', JwtUtil.checkToken, async function (req, res) {
+router.put(
+  '/products/:id',
+  JwtUtil.checkToken,
+  uploadProductImages,
+  async function (req, res) {
   const _id = req.params.id;
   const name = req.body.name;
   const price = req.body.price;
   const cid = req.body.category;
-  const image = req.body.image;
   const description = req.body.description || '';
+  const brand = (req.body.brand != null ? String(req.body.brand) : '').trim();
   const now = new Date().getTime();
+  const imageUrl = (req.body.imageUrl != null ? String(req.body.imageUrl) : '').trim();
+
+  const existing = await ProductDAO.selectByID(_id);
+  if (!existing) {
+    return res.status(404).json({
+      success: false,
+      message: 'Không tìm thấy sản phẩm.',
+    });
+  }
+  const mainFile = req.files && req.files.image && req.files.image[0];
+  let image;
+  let gallery;
+  try {
+    image = await resolveProductImageForDb({
+      fileBuffer: mainFile && mainFile.buffer,
+      fileMimetype: mainFile && mainFile.mimetype,
+      imageUrl,
+      previousImage: existing.image,
+      isCreate: false,
+    });
+    gallery = await resolveGalleryFromRequest(req);
+  } catch (e) {
+    return res.status(400).json({
+      success: false,
+      message: e.message || 'Không xử lý được ảnh.',
+    });
+  }
+  if (!image) {
+    return res.status(400).json({
+      success: false,
+      message: 'Thiếu ảnh sản phẩm.',
+    });
+  }
 
   const category = await CategoryDAO.selectByID(cid);
+  const slugBase = slugify(name);
+  const slug = await ProductDAO.ensureUniqueSlug(slugBase, _id);
   const product = {
     _id: _id,
     name: name,
+    brand: brand,
+    slug: slug,
     price: price,
     image: image,
+    gallery,
     description: description,
     cdate: now,
-    category: category
+    category: category,
   };
 
   const result = await ProductDAO.update(product);
@@ -288,49 +447,106 @@ router.patch('/orders/:id/status', JwtUtil.checkToken, async function (req, res)
 // ===== UI Settings =====
 router.get('/settings/auth-hero-bg', JwtUtil.checkToken, async function (req, res) {
   const row = await SettingDAO.getByKey('authHeroBg');
-  if (!row || !row.data) {
-    return res.json({ mime: '', data: '', updatedAt: 0 });
-  }
-  res.json({ mime: row.mime || '', data: row.data || '', updatedAt: row.updatedAt || 0 });
+  const imageUrl = resolveSettingImageUrlForAdmin(row, 'authHeroBg');
+  res.json({
+    imageUrl: imageUrl || '',
+    updatedAt: (row && row.updatedAt) || 0,
+  });
 });
 
-router.put('/settings/auth-hero-bg', JwtUtil.checkToken, async function (req, res) {
-  const mime = (req.body.mime || '').trim();
-  const data = (req.body.data || '').trim();
-
-  if (!mime || !data) {
-    return res.status(400).json({ success: false, message: 'Vui lòng tải ảnh (mime + data).' });
+router.put(
+  '/settings/auth-hero-bg',
+  JwtUtil.checkToken,
+  uploadImageMemory.single('image'),
+  async function (req, res) {
+    try {
+      let imageUrl = (req.body.imageUrl || '').trim();
+      if (req.file && req.file.buffer && req.file.buffer.length) {
+        if (!isConfigured()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Firebase chưa cấu hình — không thể upload ảnh.',
+          });
+        }
+        if (!/^image\//i.test(req.file.mimetype || '')) {
+          return res.status(400).json({ success: false, message: 'File phải là ảnh.' });
+        }
+        imageUrl = await uploadImageBuffer(req.file.buffer, req.file.mimetype, 'settings');
+      }
+      if (!looksLikeHttpUrl(imageUrl)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vui lòng chọn file ảnh hoặc nhập URL ảnh (http/https).',
+        });
+      }
+      const row = await SettingDAO.upsertAuthHeroBgByUrl(imageUrl);
+      res.json({ success: true, imageUrl: row.imageUrl, updatedAt: row.updatedAt });
+    } catch (e) {
+      res.status(400).json({
+        success: false,
+        message: e.message || 'Không lưu được ảnh.',
+      });
+    }
   }
-  if (!/^image\//i.test(mime)) {
-    return res.status(400).json({ success: false, message: 'Chỉ hỗ trợ file ảnh.' });
-  }
-
-  const row = await SettingDAO.upsertAuthHeroBg({ mime, data });
-  res.json({ success: true, ...row });
-});
+);
 
 router.get('/settings/site-logo', JwtUtil.checkToken, async function (req, res) {
   const row = await SettingDAO.getByKey('siteLogo');
-  if (!row || !row.data) {
-    return res.json({ mime: '', data: '', updatedAt: 0 });
-  }
-  res.json({ mime: row.mime || '', data: row.data || '', updatedAt: row.updatedAt || 0 });
+  const imageUrl = resolveSettingImageUrlForAdmin(row, 'siteLogo');
+  res.json({
+    imageUrl: imageUrl || '',
+    updatedAt: (row && row.updatedAt) || 0,
+  });
 });
 
-router.put('/settings/site-logo', JwtUtil.checkToken, async function (req, res) {
-  const mime = (req.body.mime || '').trim();
-  const data = (req.body.data || '').trim();
-
-  if (!mime || !data) {
-    return res.status(400).json({ success: false, message: 'Vui lòng tải ảnh (mime + data).' });
+router.put(
+  '/settings/site-logo',
+  JwtUtil.checkToken,
+  uploadImageMemory.single('image'),
+  async function (req, res) {
+    try {
+      let imageUrl = (req.body.imageUrl || '').trim();
+      if (req.file && req.file.buffer && req.file.buffer.length) {
+        if (!isConfigured()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Firebase chưa cấu hình — không thể upload ảnh.',
+          });
+        }
+        if (!/^image\//i.test(req.file.mimetype || '')) {
+          return res.status(400).json({ success: false, message: 'File phải là ảnh.' });
+        }
+        imageUrl = await uploadImageBuffer(req.file.buffer, req.file.mimetype, 'settings');
+      }
+      if (!looksLikeHttpUrl(imageUrl)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vui lòng chọn file ảnh hoặc nhập URL ảnh (http/https).',
+        });
+      }
+      const row = await SettingDAO.upsertSiteLogoByUrl(imageUrl);
+      res.json({ success: true, imageUrl: row.imageUrl, updatedAt: row.updatedAt });
+    } catch (e) {
+      res.status(400).json({
+        success: false,
+        message: e.message || 'Không lưu được ảnh.',
+      });
+    }
   }
-  if (!/^image\//i.test(mime)) {
-    return res.status(400).json({ success: false, message: 'Chỉ hỗ trợ file ảnh.' });
-  }
+);
 
-  const row = await SettingDAO.upsertSiteLogo({ mime, data });
-  res.json({ success: true, ...row });
-});
+/** URL hiển thị cho admin: Firebase / URL đã lưu / proxy legacy (không trả base64 trong JSON). */
+function resolveSettingImageUrlForAdmin(row, kind) {
+  if (!row) return '';
+  const u = (row.imageUrl || '').trim();
+  if (looksLikeHttpUrl(u)) return u;
+  if (row.data && row.mime) {
+    const path =
+      kind === 'siteLogo' ? 'site-logo-image' : 'auth-hero-bg-image';
+    return `/api/customer/settings/${path}?v=${row.updatedAt || 0}`;
+  }
+  return '';
+}
 
 // ===== Home slides =====
 router.get('/slides', JwtUtil.checkToken, async function (req, res) {
@@ -338,47 +554,110 @@ router.get('/slides', JwtUtil.checkToken, async function (req, res) {
   res.json(rows);
 });
 
-router.post('/slides', JwtUtil.checkToken, async function (req, res) {
-  const title = req.body.title || '';
-  const subtitle = req.body.subtitle || '';
-  const href = req.body.href || '';
-  const imageMime = (req.body.imageMime || '').trim();
-  const imageData = (req.body.imageData || '').trim();
-  const active = req.body.active;
-  const sort = req.body.sort;
+router.post(
+  '/slides',
+  JwtUtil.checkToken,
+  uploadImageMemory.single('image'),
+  async function (req, res) {
+    const title = req.body.title || '';
+    const subtitle = req.body.subtitle || '';
+    const href = req.body.href || '';
+    const active = req.body.active;
+    const sort = req.body.sort;
 
-  if (!imageMime || !imageData) {
-    return res.status(400).json({ success: false, message: 'Vui lòng tải ảnh slide.' });
+    let imageUrl = '';
+    try {
+      if (req.file && req.file.buffer && req.file.buffer.length) {
+        if (!isConfigured()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Firebase chưa cấu hình — không thể upload ảnh.',
+          });
+        }
+        if (!/^image\//i.test(req.file.mimetype || '')) {
+          return res.status(400).json({ success: false, message: 'File phải là ảnh.' });
+        }
+        imageUrl = await uploadImageBuffer(req.file.buffer, req.file.mimetype, 'slides');
+      } else {
+        const u = (req.body.imageUrl || '').trim();
+        if (looksLikeHttpUrl(u)) imageUrl = u;
+      }
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: e.message || 'Không upload được ảnh.',
+      });
+    }
+
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng chọn file ảnh hoặc nhập URL ảnh (http/https).',
+      });
+    }
+
+    const row = await SlideDAO.insert({ title, subtitle, href, imageUrl, active, sort });
+    res.json(row);
   }
-  if (!/^image\//i.test(imageMime)) {
-    return res.status(400).json({ success: false, message: 'Chỉ hỗ trợ file ảnh.' });
+);
+
+router.put(
+  '/slides/:id',
+  JwtUtil.checkToken,
+  uploadImageMemory.single('image'),
+  async function (req, res) {
+    const _id = req.params.id;
+    const title = req.body.title || '';
+    const subtitle = req.body.subtitle || '';
+    const href = req.body.href || '';
+    const active = req.body.active;
+    const sort = req.body.sort;
+
+    if (!_id) return res.status(400).json({ success: false, message: 'Thiếu id.' });
+
+    const existing = await SlideDAO.selectById(_id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy slide.' });
+    }
+
+    let imageUrl;
+    try {
+      if (req.file && req.file.buffer && req.file.buffer.length) {
+        if (!isConfigured()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Firebase chưa cấu hình — không thể upload ảnh.',
+          });
+        }
+        if (!/^image\//i.test(req.file.mimetype || '')) {
+          return res.status(400).json({ success: false, message: 'File phải là ảnh.' });
+        }
+        imageUrl = await uploadImageBuffer(req.file.buffer, req.file.mimetype, 'slides');
+      } else {
+        const u = (req.body.imageUrl || '').trim();
+        if (looksLikeHttpUrl(u)) imageUrl = u;
+      }
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: e.message || 'Không upload được ảnh.',
+      });
+    }
+
+    const slide = { _id, title, subtitle, href, active, sort };
+    if (imageUrl) slide.imageUrl = imageUrl;
+
+    const hadImage =
+      !!(existing.imageUrl || '').trim() ||
+      !!(existing.imageMime && existing.imageData);
+    if (!imageUrl && !hadImage) {
+      return res.status(400).json({ success: false, message: 'Slide cần có ảnh.' });
+    }
+
+    const row = await SlideDAO.update(slide);
+    res.json(row);
   }
-
-  const row = await SlideDAO.insert({ title, subtitle, href, imageMime, imageData, active, sort });
-  res.json(row);
-});
-
-router.put('/slides/:id', JwtUtil.checkToken, async function (req, res) {
-  const _id = req.params.id;
-  const title = req.body.title || '';
-  const subtitle = req.body.subtitle || '';
-  const href = req.body.href || '';
-  const imageMime = (req.body.imageMime || '').trim();
-  const imageData = (req.body.imageData || '').trim();
-  const active = req.body.active;
-  const sort = req.body.sort;
-
-  if (!_id) return res.status(400).json({ success: false, message: 'Thiếu id.' });
-  if (!imageMime || !imageData) {
-    return res.status(400).json({ success: false, message: 'Vui lòng tải ảnh slide.' });
-  }
-  if (!/^image\//i.test(imageMime)) {
-    return res.status(400).json({ success: false, message: 'Chỉ hỗ trợ file ảnh.' });
-  }
-
-  const row = await SlideDAO.update({ _id, title, subtitle, href, imageMime, imageData, active, sort });
-  res.json(row);
-});
+);
 
 router.delete('/slides/:id', JwtUtil.checkToken, async function (req, res) {
   const _id = req.params.id;

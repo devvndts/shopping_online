@@ -42,11 +42,21 @@ export default function HomeSlider() {
 
   if (!hasSlides) return null;
 
+  const slideImgSrc = (s) => {
+    if (!s || !s._id) return '';
+    const u = (s.imageUrl || '').trim();
+    if (/^https?:\/\//i.test(u)) {
+      const sep = u.includes('?') ? '&' : '?';
+      return `${u}${sep}v=${s.updatedAt || 0}`;
+    }
+    if (s.hasLegacyImage) {
+      return `/api/customer/slides/${s._id}/image?v=${s.updatedAt || 0}`;
+    }
+    return '';
+  };
+
   const first = slides[0];
-  const firstImg =
-    first && first._id
-      ? `/api/customer/slides/${first._id}/image?v=${first.updatedAt || 0}`
-      : '';
+  const firstImg = slideImgSrc(first);
 
   return (
     <section className="cc-home-slider" aria-label="Khuyến mãi & nổi bật">
@@ -69,10 +79,7 @@ export default function HomeSlider() {
           pagination={{ clickable: true }}
         >
           {slides.map((s, idx) => {
-            const imgSrc =
-              s && s._id
-                ? `/api/customer/slides/${s._id}/image?v=${s.updatedAt || 0}`
-                : '';
+            const imgSrc = slideImgSrc(s);
             const title = s.title || '';
             const subtitle = s.subtitle || '';
             const href = s.href || '';

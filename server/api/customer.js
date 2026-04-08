@@ -6,10 +6,22 @@ const EmailUtil = require("../utils/EmailUtil");
 const JwtUtil = require('../utils/JwtUtil');
 const CategoryDAO = require("../models/CategoryDAO");
 const ProductDAO = require("../models/ProductDAO");
+const { isLikelyMongoObjectId } = require("../utils/slugify");
 const OrderDAO = require('../models/OrderDAO');
 const SettingDAO = require('../models/SettingDAO');
 const SlideDAO = require('../models/SlideDAO');
 const ReviewDAO = require('../models/ReviewDAO');
+const { looksLikeHttpUrl } = require('../utils/productImageField');
+
+function publicSettingImageUrl(row, proxyPath) {
+  if (!row) return '';
+  const u = (row.imageUrl || '').trim();
+  if (looksLikeHttpUrl(u)) return u;
+  if (row.data && row.mime) {
+    return `/api/customer/settings/${proxyPath}?v=${row.updatedAt || 0}`;
+  }
+  return '';
+}
 
 const CustomerDAO = require("../models/CustomerDAO");
 
@@ -40,13 +52,43 @@ router.get("/products/category/:cid", async function (req, res) {
   res.json(products);
 });
 router.get("/products/search/:keyword", async function (req, res) {
-  const keyword = req.params.keyword;
+  let keyword = req.params.keyword;
+  try {
+    keyword = decodeURIComponent(keyword);
+  } catch {
+    // giữ nguyên nếu chuỗi không phải %encoding
+  }
   const products = await ProductDAO.selectByKeyword(keyword);
   res.json(products);
 });
-router.get("/products/:id", async function (req, res) {
-  const _id = req.params.id;
-  const product = await ProductDAO.selectByID(_id);
+router.get("/products/:idOrSlug", async function (req, res) {
+  const param = req.params.idOrSlug;
+  let product = null;
+  if (isLikelyMongoObjectId(param)) {
+    product = await ProductDAO.selectByID(param);
+  }
+  if (!product) {
+    const slug = decodeURIComponent(String(param || ''));
+    product = await ProductDAO.selectBySlug(slug);
+  }
+  if (product) {
+    const g = product.gallery;
+    let list = [];
+    if (Array.isArray(g)) {
+      list = g.map((x) => (x != null ? String(x).trim() : '')).filter(Boolean);
+    } else if (g != null && String(g).trim()) {
+      try {
+        const p = JSON.parse(String(g));
+        if (Array.isArray(p)) {
+          list = p.map((x) => String(x || '').trim()).filter(Boolean);
+        }
+      } catch {
+        const one = String(g).trim();
+        if (one) list = [one];
+      }
+    }
+    product = { ...product, gallery: list };
+  }
   res.json(product);
 });
 
@@ -192,21 +234,50 @@ router.get('/orders/customer/:cid', JwtUtil.checkToken, async function (req, res
   res.json(orders);
 });
 
-// Public UI settings
+// Public UI settings — chỉ trả URL (Firebase / proxy legacy), không trả base64 trong JSON.
 router.get('/settings/auth-hero-bg', async function (req, res) {
   const row = await SettingDAO.getByKey('authHeroBg');
-  if (!row || !row.data) {
-    return res.json({ mime: '', data: '', updatedAt: 0 });
-  }
-  res.json({ mime: row.mime || '', data: row.data || '', updatedAt: row.updatedAt || 0 });
+  res.json({
+    imageUrl: publicSettingImageUrl(row, 'auth-hero-bg-image'),
+    updatedAt: (row && row.updatedAt) || 0,
+  });
 });
 
 router.get('/settings/site-logo', async function (req, res) {
   const row = await SettingDAO.getByKey('siteLogo');
-  if (!row || !row.data) {
-    return res.json({ mime: '', data: '', updatedAt: 0 });
+  res.json({
+    imageUrl: publicSettingImageUrl(row, 'site-logo-image'),
+    updatedAt: (row && row.updatedAt) || 0,
+  });
+});
+
+router.get('/settings/auth-hero-bg-image', async function (req, res) {
+  const row = await SettingDAO.getByKey('authHeroBg');
+  if (!row || !row.data || !row.mime) return res.status(404).end();
+  const mime = row.mime;
+  try {
+    const buf = Buffer.from(String(row.data), 'base64');
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    if (row.updatedAt) res.setHeader('ETag', String(row.updatedAt));
+    res.end(buf);
+  } catch {
+    res.status(500).end();
   }
-  res.json({ mime: row.mime || '', data: row.data || '', updatedAt: row.updatedAt || 0 });
+});
+
+router.get('/settings/site-logo-image', async function (req, res) {
+  const row = await SettingDAO.getByKey('siteLogo');
+  if (!row || !row.mime || !row.data) return res.status(404).end();
+  try {
+    const buf = Buffer.from(String(row.data), 'base64');
+    res.setHeader('Content-Type', row.mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    if (row.updatedAt) res.setHeader('ETag', String(row.updatedAt));
+    res.end(buf);
+  } catch {
+    res.status(500).end();
+  }
 });
 
 router.get('/slides', async function (req, res) {
